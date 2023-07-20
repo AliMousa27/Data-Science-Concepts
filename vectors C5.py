@@ -69,4 +69,3 @@ def make_matrix(num_rows: int,
 def identity(n:int):
     return make_matrix(5,5,lambda i,j: 1 if i==j else 0)
 
-print(identity(5))
