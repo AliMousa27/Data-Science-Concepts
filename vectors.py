@@ -6,18 +6,34 @@ from numpy import matrix
 
 vector1 = [2,3]
 vector2 = [2,7]
+def addVectors(v, w):
+    """Adds corresponding elements"""
+    assert len(v) == len(w), "vectors must be the same length"
 
-def addVectors(*vectors: List)->List:
-    return [sum(dimension) for dimension in zip(*vectors)]
+    return [v_i + w_i for v_i, w_i in zip(v, w)]
+def vector_sum(vectors):
+    """Sums all corresponding elements"""
+    # Check that vectors is not empty
+    assert vectors, "no vectors provided!"
 
+    # Check the vectors are all the same size
+    num_elements = len(vectors[0])
+    assert all(len(v) == num_elements for v in vectors), "different sizes!"
+
+    # the i-th element of the result is the sum of every vector[i]
+    return [sum(vector[i] for vector in vectors)
+            for i in range(num_elements)]
 def subtractVectors(vectorOne,vectorTwo):
     return [v-w for v,w in zip(vectorOne,vectorTwo)]
     
-def scalarMultiply(vector: List,scalar:Double)->List: 
-    return [scalar * dimension for dimension in vector]
+def scalarMultiply(c: float, v: List[float]) -> List[float]:
+    """Multiplies every element by c"""
+    return [c * v_i for v_i in v]
 
-def vectorMeans(*vectors: List)->List:
-    return [sum(dimension)/len(dimension) for dimension in zip(*vectors)]
+def vectorMeans(vectors: List[float]) -> List[float]:
+    """Computes the element-wise average"""
+    n = len(vectors)
+    return scalarMultiply(1/n, vector_sum(vectors))
 
 def dotProduct(vectorOne,vectorTwo) -> Double:
     return sum([v*w for v,w in zip(vectorOne,vectorTwo)])
@@ -68,4 +84,3 @@ def make_matrix(num_rows: int,
     
 def identity(n:int):
     return make_matrix(5,5,lambda i,j: 1 if i==j else 0)
-
