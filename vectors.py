@@ -4,6 +4,8 @@ import math
 
 from numpy import matrix
 
+
+Vector = List[float]
 vector1 = [2,3]
 vector2 = [2,7]
 def addVectors(v, w):
@@ -26,11 +28,11 @@ def vector_sum(vectors):
 def subtractVectors(vectorOne,vectorTwo):
     return [v-w for v,w in zip(vectorOne,vectorTwo)]
     
-def scalarMultiply(c: float, v: List[float]) -> List[float]:
+def scalarMultiply(c: float, v: Vector) -> Vector:
     """Multiplies every element by c"""
     return [c * v_i for v_i in v]
 
-def vectorMeans(vectors: List[List [float]]) -> List[float]:
+def vectorMeans(vectors: List[List [float]]) -> Vector:
     """Computes the element-wise average"""
     n = len(vectors)
     return scalarMultiply(1/n, vector_sum(vectors))

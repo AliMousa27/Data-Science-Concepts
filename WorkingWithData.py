@@ -6,7 +6,7 @@ from collections import Counter, namedtuple
 import matplotlib.pyplot as plt
 import probabilty, vectors,statistics
 from dateutil.parser import parse
-import csv,re
+import csv,re,tqdm
 
 #this function takes a point and classifies it in a bucket in order to make a histogram of it at a alter point
 def bucketize(point: float, bucketSize:float) -> float:
@@ -95,9 +95,15 @@ def rescale(data: List[List[float]]) -> List[List[float]]:
     for v in rescaled:
         for i in range(dim):
             if stdevs[i] > 0:
+                #subtract mean and divide by stdev for that dimension for each data set
                 v[i] = (v[i] - means[i]) / stdevs[i]
 
     return rescaled
 
 data=(rescale(data))
 #print(vectors.vectorMeans(data))
+
+for i in tqdm.tqdm(range(10)):
+    test=[random.random()for i in range(10000000)]
+print("done")
+
