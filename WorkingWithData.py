@@ -54,7 +54,7 @@ weights = [65, 70, 58, 80, 52, 90, 62, 75, 68, 56, 78, 70, 60, 85, 63, 72, 55, 6
 def scale(data: List[List[float]]):
     n= len(data[0])
     means = vectors.vectorMeans(data)
-    stdevs = [statistics.stdev(vector[i]) for vector in data
+    stdevs = [statistics.stdev([vector[i] for vector in data])
                   for i in range(n)]
     return means,stdevs
     
@@ -80,3 +80,24 @@ data = [
     [181, 79],
     [176, 74]
 ]
+def rescale(data: List[List[float]]) -> List[List[float]]:
+    """
+    Rescales the input data so that each position has
+    mean 0 and standard deviation 1. (Leaves a position
+    as is if its standard deviation is 0.)
+    """
+    dim = len(data[0])
+    means, stdevs = scale(data)
+    print(stdevs)
+    # Make a copy of each vector
+    rescaled = [v[:] for v in data]
+
+    for v in rescaled:
+        for i in range(dim):
+            if stdevs[i] > 0:
+                v[i] = (v[i] - means[i]) / stdevs[i]
+
+    return rescaled
+
+data=(rescale(data))
+#print(vectors.vectorMeans(data))
