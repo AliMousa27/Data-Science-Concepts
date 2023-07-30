@@ -83,5 +83,13 @@ for yesterday, today in zip(allStocks, allStocks[1:]):
     percentChangeWithMonths[today.name].append(StockPricePercentChange(name=name,date=date,percent=percent))
 
 
-applPercents = [(appl.percent,appl.date) for appl in percentChangeWithMonths["GOOG"]]
-print(max(applPercents))
+applPercents = [(appl.percent,appl.date) for appl in percentChangeWithMonths["AAPL"]]
+#print(max(applPercents))
+
+#key is month and val is a list of percents
+changeEachMonth : defaultdict[datetime.date.month, List[float]] = defaultdict(list)
+for stock in percentChangeWithMonths.values():
+    for stockChange in stock:
+        changeEachMonth[stockChange.date.month].append(stockChange.percent)
+changeEachMonth = [(key,sum(val)) for key,val in changeEachMonth.items()]
+print(max(changeEachMonth, key=lambda x: x[1]))
