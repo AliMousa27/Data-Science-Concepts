@@ -1,4 +1,5 @@
-from scratch.linear_algebra import Vector, dot
+from vectors import Vector, dot,distance, add, scalar_multiply,vector_mean
+import random
 
 def sum_of_squares(v: Vector) -> float:
     """Computes the sum of squared elements in v"""
@@ -23,8 +24,6 @@ def estimate_gradient(f: Callable[[Vector], float],
     return [partial_difference_quotient(f, v, i, h)
             for i in range(len(v))]
 
-import random
-from scratch.linear_algebra import distance, add, scalar_multiply
 
 def gradient_step(v: Vector, gradient: Vector, step_size: float) -> Vector:
     """Moves `step_size` in the `gradient` direction from `v`"""
@@ -62,7 +61,15 @@ def minibatches(dataset: List[T],
     for start in batch_starts:
         end = start + batch_size
         yield dataset[start:end]
-
+def partial_difference_quotient(f: Callable[[Vector], float],
+                                    v: Vector,
+                                    i: int,
+                                    h: float) -> float:
+        """Returns the i-th partial difference quotient of f at v"""
+        w = [v_j + (h if j == i else 0)    # add h to just the ith element of v
+             for j, v_j in enumerate(v)]
+    
+        return (f(w) - f(v)) / h
 def main():
     xs = range(-10, 11)
     actuals = [derivative(x) for x in xs]
@@ -79,15 +86,7 @@ def main():
     
     plt.close()
     
-    def partial_difference_quotient(f: Callable[[Vector], float],
-                                    v: Vector,
-                                    i: int,
-                                    h: float) -> float:
-        """Returns the i-th partial difference quotient of f at v"""
-        w = [v_j + (h if j == i else 0)    # add h to just the ith element of v
-             for j, v_j in enumerate(v)]
     
-        return (f(w) - f(v)) / h
     
     
     # "Using the Gradient" example
@@ -105,7 +104,7 @@ def main():
     
     # First "Using Gradient Descent to Fit Models" example
     
-    from scratch.linear_algebra import vector_mean
+    
     
     # Start with random values for slope and intercept.
     theta = [random.uniform(-1, 1), random.uniform(-1, 1)]
