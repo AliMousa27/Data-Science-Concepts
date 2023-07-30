@@ -30,7 +30,7 @@ def scalarMultiply(c: float, v: List[float]) -> List[float]:
     """Multiplies every element by c"""
     return [c * v_i for v_i in v]
 
-def vectorMeans(vectors: List[float]) -> List[float]:
+def vectorMeans(vectors: List[List [float]]) -> List[float]:
     """Computes the element-wise average"""
     n = len(vectors)
     return scalarMultiply(1/n, vector_sum(vectors))
