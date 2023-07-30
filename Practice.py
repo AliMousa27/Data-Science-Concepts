@@ -1,10 +1,11 @@
-from collections import namedtuple
+from collections import namedtuple,defaultdict
 import csv
 from dataclasses import dataclass
 import datetime
 from tokenize import maybe
 from typing import NamedTuple,List
 from dateutil.parser import parse
+
 @dataclass
 class StockPrice:
     name: str
@@ -44,6 +45,9 @@ with open("test.csv","r") as csvFile:
         if maybeValid is None:
             print(f"skipping row: {row}")
         else: allStocks.append(maybeValid)
-        
-        
-print("Max appl volume is", max([stock.volume for stock in allStocks if stock.name == "AAPL"]))
+priceByName: defaultdict[str, List[StockPrice]] = defaultdict(list)
+
+for stock in allStocks:
+    priceByName[stock.name].append(stock)
+    
+print(priceByName)
