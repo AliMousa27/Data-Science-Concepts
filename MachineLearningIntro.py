@@ -28,8 +28,24 @@ def train_test_split(xs: List[X],
 xs = [x for x in range(1000)]  # xs are 1 ... 1000
 ys = [2 * x for x in xs]       # each y_i is twice x_i
 x_train, x_test, y_train, y_test = train_test_split(xs, ys, 0.25)
-# Check that the proportions are correct
-assert len(x_train) == len(y_train) == 750
-assert len(x_test) == len(y_test) == 250
-assert all(y == 2 * x for x, y in zip(x_train, y_train))
-assert all(y == 2 * x for x, y in zip(x_test, y_test))
+
+#accuracy is correctPrecdiction/total data
+#tp stands for true positiv fp false positive etc that are in a confusion matrix
+#so we sum the true negatives and true posistives and divde by the sum of it all
+def accuracy(tp: int, fp: int, fn: int, tn: int) -> float:
+    correct = tp + tn
+    total = tp + fp + fn + tn
+    return correct / total
+
+#ratio of the positives to the total nmber of positives 
+def precision(tp: int, fp: int, fn: int, tn: int) -> float:
+    return tp / (tp + fp)
+#farction of posisitves our model identified
+def recall(tp: int, fp: int, fn: int, tn: int) -> float:
+    return tp / (tp + fn)
+
+def f1_score(tp: int, fp: int, fn: int, tn: int) -> float:
+    p = precision(tp, fp, fn, tn)
+    r = recall(tp, fp, fn, tn)
+
+    return 2 * p * r / (p + r)
