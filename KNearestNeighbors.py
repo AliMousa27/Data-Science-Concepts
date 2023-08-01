@@ -5,7 +5,7 @@ from collections import Counter,defaultdict
 import requests
 import csv
 from vectors import distance,Vector
-
+from MachineLearningIntro import splitData
 def majorityVote(labels: List[str]):
     """Assumes that labels are ordered from nearest to farthest."""
     voteCounts = Counter(labels)
@@ -53,10 +53,19 @@ def main():
         for row in csvReader:
             data.append(parseIrisRow(row))
     
+    data1,data2 = splitData(data,0.5)
+    
+    correctGuesses=0
+    for labeledPoint in data1:
+        prediction = knnClassify(5,data2,labeledPoint.point)
+        if prediction == labeledPoint.label:
+            correctGuesses+=1
+            
+    print(f"There was a total of {correctGuesses} correct guesses out of {len(data1)}")
         #data is sepal_length, sepal_width, petal_length, petal_width, class
         #so now i want to find the ranges to test out k neighbords
         #find the max by zipping the list of vectors, then get the max of each column of data
-    maxValues = []
+    '''maxValues = []
     minValues = []
 
     for column in zip(*[item.point for item in data]):
@@ -65,6 +74,6 @@ def main():
 
 
     randomIrisMeasurements = [random.uniform(min,max) for min,max in zip(minValues,maxValues)]
-    print(knnClassify(10,data,randomIrisMeasurements))  
+    print(knnClassify(10,data,randomIrisMeasurements))  '''
     
 if __name__ == "__main__": main()
