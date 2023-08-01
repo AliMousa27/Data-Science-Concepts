@@ -1,5 +1,7 @@
-from typing import List,NamedTuple
-from collections import Counter
+from os import name
+import random
+from typing import List,NamedTuple, Dict
+from collections import Counter,defaultdict
 import requests
 import csv
 from vectors import distance,Vector
@@ -22,11 +24,11 @@ class LabeledPoint(NamedTuple):
     
 def knnClassify(k:int,
                 points:list[LabeledPoint],
-                newPoint: LabeledPoint):
+                newPoint: Vector):
     #Order points from nearest to farthest
     sortedPoints = sorted(points,
-                          #create a lambda function that gives the key to be the distance between the points to sort with
-                          key=lambda point:distance(point,newPoint))
+                          #create a lambda function that gives the key to be the distance between the points and the new point to sort with
+                          key=lambda point:distance(point.point,newPoint))
     #find labels for closest K neighbors(the [:k] means from start until k that is to say find k neaighest neighbords :) )
     labeledKNeighbors = [point.label for point in sortedPoints[:k]] 
     #then find the label that is most common to the new point
@@ -43,11 +45,26 @@ def parseIrisRow(row: List[str])->LabeledPoint:
     label= row[-1].split("-")[-1]
     return LabeledPoint(label,measurements)
 
-data: List[LabeledPoint] =[]
+def main():
+    data: List[LabeledPoint] =[]
 
-with open("Iris.dat","r") as f:
-    csvReader=csv.reader(f,delimiter=",")
-    for row in csvReader:
-        data.append(parseIrisRow(row))
-        
-print(data)
+    with open("Iris.dat","r") as f:
+        csvReader=csv.reader(f,delimiter=",")
+        for row in csvReader:
+            data.append(parseIrisRow(row))
+    
+        #data is sepal_length, sepal_width, petal_length, petal_width, class
+        #so now i want to find the ranges to test out k neighbords
+        #find the max by zipping the list of vectors, then get the max of each column of data
+    maxValues = []
+    minValues = []
+
+    for column in zip(*[item.point for item in data]):
+        maxValues.append(max(column))
+        minValues.append(min(column))
+
+
+    randomIrisMeasurements = [random.uniform(min,max) for min,max in zip(minValues,maxValues)]
+    print(knnClassify(10,data,randomIrisMeasurements))  
+    
+if __name__ == "__main__": main()
