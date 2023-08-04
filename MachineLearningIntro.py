@@ -13,7 +13,6 @@ def splitData(data : List[X], percent : float)->Tuple[List[X],List[X]]:
     return data[:cutIndex],data[cutIndex:]
 
 data = [n for n in range(10)]
-print(splitData(data=data,percent=0.2))
 
 def train_test_split(xs: List[X],
                      ys: List[Y],

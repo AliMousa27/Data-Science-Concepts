@@ -57,7 +57,7 @@ def main():
     
     correctGuesses=0
     for labeledPoint in data1:
-        prediction = knnClassify(5,data2,labeledPoint.point)
+        prediction = knnClassify(10,data2,labeledPoint.point)
         if prediction == labeledPoint.label:
             correctGuesses+=1
             
