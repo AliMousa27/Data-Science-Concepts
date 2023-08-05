@@ -56,7 +56,7 @@ class NaiveBayesClassifier:
     def predict(self, text: str) -> float:
         text_tokens = tokenize(text)
         log_prob_if_spam = log_prob_if_ham = 0.0
-
+        
         # Iterate through each word in our vocabulary.
         for token in self.tokens:
             prob_if_spam, prob_if_ham = self._probabilities(token)
@@ -76,3 +76,8 @@ class NaiveBayesClassifier:
         prob_if_spam = math.exp(log_prob_if_spam)
         prob_if_ham = math.exp(log_prob_if_ham)
         return prob_if_spam / (prob_if_spam + prob_if_ham)
+    
+messages = [Message("spam rules", is_spam=True),
+            Message("ham rules", is_spam=False),
+            Message("hello ham", is_spam=False)]
+
