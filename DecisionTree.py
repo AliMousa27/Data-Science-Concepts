@@ -60,7 +60,8 @@ def partitionByAttribute(inputs: List[T], attribute: str) -> Dict[Any, List[T]]:
     #create a default dict, key is the attreiobvute val is a list of data that has said attribute
     partitions : Dict[Any, List[T]] = defaultdict(list)
     for input in inputs:
-        #get the key for each attribute
+        #get the key for each attribute (attributes are diffrent but all under same category)
+        #example experince level is mid senior and junior
         key = getattr(input,attribute)
         #add the input to the list
         partitions[key].append(input)
@@ -73,14 +74,24 @@ def partitionEntropyByLabel(inputs: List[Any],
     
     # partition based on the chosen attribute
     partitions = partitionByAttribute(inputs, attribute)
-    
-    # but partitionEntropy needs just the class labels
+    #get the label we want for each attribute in the dict that contains the lists
+    #e.x 'Senior': [Candidate(level='Senior', lang='Java', tweets=False, phd=False, did_well=False),.......
+    # and 'Mid': [Candidate(level='Mid', lang='Python', tweets=False, phd=False, did_well=True)......
+    # these are 2 lists where the key is the attribute type
+    # then we get each label, for each of these lists, making it a 2d list
     labels = [[getattr(input, label_attribute) for input in partition]
                 for partition in partitions.values()]
-    
     return partitionEntropy(labels)
     
     
-    
-for key in ['level','lang','tweets','phd']:
-    print(key, partitionEntropyByLabel(inputs, key, 'did_well'))
+#choose the lowest entropy to partition by
+minEntropyAttribute = min([partitionEntropyByLabel(inputs, key, 'did_well'),key]
+                          for key in ['level','lang','tweets','phd'])
+
+print(minEntropyAttribute)
+#split based on lowest entropy which was level
+
+seniorInputs = [input for input in inputs if input.level == 'Senior']
+minEntropyAttribute = min([partitionEntropyByLabel(seniorInputs, key, 'did_well'),key]
+                          for key in ['level','lang','tweets','phd'])
+print(minEntropyAttribute)
