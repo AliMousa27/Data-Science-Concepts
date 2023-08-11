@@ -117,6 +117,7 @@ def classify(tree: DecisionTree, input: Any) -> Any:
         return tree.value
     #otherwise we have a subtree we need to work through
     #subtree has a key to split on and a dict whose are to consider next
+    #here we get the value of the next key to consider
     subtreeKey = getattr(input,tree.attribute)
     
     if subtreeKey not in tree.subtrees: # If no subtree for key,
@@ -127,43 +128,40 @@ def classify(tree: DecisionTree, input: Any) -> Any:
 
 
 
-def build_tree_id3(inputs: List[Any],
-    split_attributes: List[str],#attribute to split with
-    target_attribute: str) -> DecisionTree:
+def buildTreeID3(inputs: List[Any],
+    splitAttributes: List[str],#attribute to split with
+    targetAttribute: str) -> DecisionTree:
     
     # Count target labels
-    label_counts = Counter(getattr(input, target_attribute)
+    labelCounts = Counter(getattr(input, targetAttribute)
     for input in inputs)
     
-    most_common_label = label_counts.most_common(1)[0][0]
+    mostCommonLabel = labelCounts.most_common(1)[0][0]
     
     # If there's a unique label, predict it
-    if len(label_counts) == 1:
-        return Leaf(value=most_common_label)
+    if len(labelCounts) == 1:
+        return Leaf(value=mostCommonLabel)
     # If no split attributes left, return the majority label
-    if not split_attributes:
-        return Leaf(value=most_common_label)
+    if not splitAttributes:
+        return Leaf(value=mostCommonLabel)
     
     # Otherwise split by the best attribute
     def split_entropy(attribute: str) -> float:
         """Helper function for finding the best attribute"""
-        return partitionEntropyByLabel(inputs, attribute, target_attribute)
+        return partitionEntropyByLabel(inputs, attribute, targetAttribute)
     
-    best_attribute = min(split_attributes, key=split_entropy)
-    partitions = partitionByAttribute(inputs, best_attribute)
-    new_attributes = [a for a in split_attributes if a != best_attribute]
+    bestAttribute = min(splitAttributes, key=split_entropy)#make a list of each entropy with the list attribute, then get the minumum attribute of entropy
+    partitions = partitionByAttribute(inputs, bestAttribute)#partition with said attribute
+    newleftAttributes = [a for a in splitAttributes if a != bestAttribute]#get the rest of the attributes
     
     # Recursively build the subtrees
-    subtrees = {attribute_value : build_tree_id3(inputs=subset,
-    split_attributes=new_attributes,
-    target_attribute=target_attribute)
+    subtrees = {attribute_value : buildTreeID3(inputs=subset,
+    splitAttributes=newleftAttributes,
+    targetAttribute=targetAttribute)
     for attribute_value, subset in partitions.items()}
     
-    return Split(best_attribute, subtrees, default_value=most_common_label)
+    return Split(bestAttribute, subtrees, default_value=mostCommonLabel)
 
-tree = build_tree_id3(inputs=inputs,
-split_attributes=['level', 'lang', 'tweets', 'phd'],
-target_attribute='did_well')
-
-
-print(tree)
+tree = buildTreeID3(inputs=inputs,
+splitAttributes=['level', 'lang', 'tweets', 'phd'],
+targetAttribute='did_well')
