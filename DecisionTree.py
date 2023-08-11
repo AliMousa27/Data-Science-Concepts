@@ -1,4 +1,4 @@
-from typing import List,Any,NamedTuple, Optional,Dict, TypeVar
+from typing import List,Any,NamedTuple, Optional,Dict, TypeVar,Union
 import math
 from collections import Counter,defaultdict
 
@@ -95,3 +95,75 @@ seniorInputs = [input for input in inputs if input.level == 'Senior']
 minEntropyAttribute = min([partitionEntropyByLabel(seniorInputs, key, 'did_well'),key]
                           for key in ['level','lang','tweets','phd'])
 print(minEntropyAttribute)
+#now we create a tree which is eaither a leaf with a value or a split 
+class Leaf(NamedTuple):
+    value: Any
+    
+'''a Split (containing an attribute to split on, subtrees for specific
+values of that attribute, and possibly a default value to use if we
+see an unknown value).
+'''
+class Split(NamedTuple):
+    attribute: str
+    subtrees: dict
+    default_value: Any = None
+    
+DecisionTree = Union[Leaf, Split]
+
+def classify(tree: DecisionTree, input: Any) -> Any:
+    """classify the input using the given decision tree"""
+    #if the tree is down to a leaf node, just return its value
+    if isinstance(tree,Leaf):
+        return tree.value
+    #otherwise we have a subtree we need to work through
+    #subtree has a key to split on and a dict whose are to consider next
+    subtreeKey = getattr(input,tree.attribute)
+    
+    if subtreeKey not in tree.subtrees: # If no subtree for key,
+        return tree.default_value # return the default value.
+    
+    subtree = tree.subtrees[subtreeKey] # Choose the appropriate subtree
+    return classify(subtree, input) # and use it to classify the input.
+
+
+
+def build_tree_id3(inputs: List[Any],
+    split_attributes: List[str],#attribute to split with
+    target_attribute: str) -> DecisionTree:
+    
+    # Count target labels
+    label_counts = Counter(getattr(input, target_attribute)
+    for input in inputs)
+    
+    most_common_label = label_counts.most_common(1)[0][0]
+    
+    # If there's a unique label, predict it
+    if len(label_counts) == 1:
+        return Leaf(value=most_common_label)
+    # If no split attributes left, return the majority label
+    if not split_attributes:
+        return Leaf(value=most_common_label)
+    
+    # Otherwise split by the best attribute
+    def split_entropy(attribute: str) -> float:
+        """Helper function for finding the best attribute"""
+        return partitionEntropyByLabel(inputs, attribute, target_attribute)
+    
+    best_attribute = min(split_attributes, key=split_entropy)
+    partitions = partitionByAttribute(inputs, best_attribute)
+    new_attributes = [a for a in split_attributes if a != best_attribute]
+    
+    # Recursively build the subtrees
+    subtrees = {attribute_value : build_tree_id3(inputs=subset,
+    split_attributes=new_attributes,
+    target_attribute=target_attribute)
+    for attribute_value, subset in partitions.items()}
+    
+    return Split(best_attribute, subtrees, default_value=most_common_label)
+
+tree = build_tree_id3(inputs=inputs,
+split_attributes=['level', 'lang', 'tweets', 'phd'],
+target_attribute='did_well')
+
+
+print(tree)
