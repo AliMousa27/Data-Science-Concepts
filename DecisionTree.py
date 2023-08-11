@@ -58,7 +58,7 @@ T = TypeVar('T') # generic type for inputs
 def partitionByAttribute(inputs: List[T], attribute: str) -> Dict[Any, List[T]]:
     """Partition the inputs into lists based on the specified attribute."""
     #create a default dict, key is the attreiobvute val is a list of data that has said attribute
-    partitions : Dict[Any, List[T]] = defaultdict(inputs)
+    partitions : Dict[Any, List[T]] = defaultdict(list)
     for input in inputs:
         #get the key for each attribute
         key = getattr(input,attribute)
@@ -82,3 +82,5 @@ def partitionEntropyByLabel(inputs: List[Any],
     
     
     
+for key in ['level','lang','tweets','phd']:
+    print(key, partitionEntropyByLabel(inputs, key, 'did_well'))
