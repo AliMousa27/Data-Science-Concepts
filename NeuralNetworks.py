@@ -9,9 +9,21 @@ def perceptronOutput(weights: Vector, bias: float, x:Vector) -> float:
     #returns 1 if the perceptron should fire 0 if it shouldnt
     return stepFunction(dot(x,weights)+bias)
 
-and_weights = [2., 2]
-and_bias = -3.
-assert perceptronOutput(and_weights, and_bias, [1, 1]) == 1
-assert perceptronOutput(and_weights, and_bias, [0, 1]) == 0
-assert perceptronOutput(and_weights, and_bias, [1, 0]) == 0
-assert perceptronOutput(and_weights, and_bias, [0, 0]) == 0
+
+def main():
+    #OR gate test using the perceptrons
+    orWeights = [2., 2]
+    orBias = -1.
+    assert perceptronOutput(orWeights, orBias, [1, 1]) == 1
+    assert perceptronOutput(orWeights, orBias, [0, 1]) == 1
+    assert perceptronOutput(orWeights, orBias, [1, 0]) == 1
+    assert perceptronOutput(orWeights, orBias, [0, 0]) == 0
+    #AND gate test using the perceptrons
+    andWeights = [2., 2]
+    andBias = -3.
+    assert perceptronOutput(andWeights, andBias, [1, 1]) == 1
+    assert perceptronOutput(andWeights, andBias, [0, 1]) == 0
+    assert perceptronOutput(andWeights, andBias, [1, 0]) == 0
+    assert perceptronOutput(andWeights, andBias, [0, 0]) == 0
+    print("done")
+if __name__ == "__main__": main()
