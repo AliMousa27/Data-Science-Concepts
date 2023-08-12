@@ -165,3 +165,4 @@ def buildTreeID3(inputs: List[Any],
 tree = buildTreeID3(inputs=inputs,
 splitAttributes=['level', 'lang', 'tweets', 'phd'],
 targetAttribute='did_well')
+print(tree)
