@@ -77,10 +77,29 @@ def sqerrorGradients(network: List[List[Vector]],
     # gradients with respect to hidden neuron weights
     hiddenGrads = [[hiddenDeltas[i] * input for input in inputVector + [1]]
     for i, hiddenNeuron in enumerate(network[0])]
+    
     return [hiddenGrads, outputGrads]
     
-    
-    
+def fizz_buzz_encode(x: int) -> Vector:
+    if x % 15 == 0:
+        return [0, 0, 0, 1]
+    elif x % 5 == 0:
+        return [0, 0, 1, 0]
+    elif x % 3 == 0:
+        return [0, 1, 0, 0]
+    else:
+        return [1, 0, 0, 0]
+def binary_encode(x: int) -> Vector:
+    binary: List[float] = []
+    for i in range(10):
+        binary.append(x % 2)
+        x = x // 2
+    return binary
+
+def argmax(xs: list) -> int:
+    """Returns the index of the largest value"""
+    return max(range(len(xs)), key=lambda i: xs[i])
+
 def main():
     #OR gate test using the perceptrons
     orWeights = [2., 2]
@@ -112,7 +131,6 @@ def main():
     [[-60., 60, -30]]# '2nd input but not 1st input' neuron
     ] 
 
-    #print(feedForward(xorNetwork, [1, 0])[-1][-1])
     xs = [[0., 0], [0., 1], [1., 0], [1., 1]]
     ys = [[0.], [1.], [1.], [0.]]
     
@@ -124,11 +142,10 @@ def main():
     ]
 
     lr =1
-    for epoch in tqdm.trange(20000, desc="neural net for xor"):
+    for epoch in tqdm.trange(20, desc="neural net for xor"):
         for x,y in zip(xs,ys):
             #the gradient for each layer
             grads = sqerrorGradients(network,x,y)
-           
             # Take a gradient step for each neuron in each layer
             network = [
                 [gradient_step(neuron, grad, -lr)
@@ -138,5 +155,35 @@ def main():
             ]
     print(feedForward(network, [1, 0])[-1][0])
     
+    xs = [binary_encode(n) for n in range(101, 1024)]
+    ys = [fizz_buzz_encode(n) for n in range(101, 1024)]    
+    NUM_HIDDEN = 25
+    network = [
+    # hidden layer: 10 inputs -> NUM_HIDDEN outputs
+    [[random.random() for _ in range(10 + 1)] for _ in range(NUM_HIDDEN)],
+    # output_layer: NUM_HIDDEN inputs -> 4 outputs
+    [[random.random() for _ in range(NUM_HIDDEN + 1)] for _ in range(4)]
+    ]
     
+    learning_rate = 1.0
+    with tqdm.trange(1) as t:
+        for epoch in t:
+            for x, y in zip(xs, ys):
+                gradients = sqerrorGradients(network, x, y)
+                # Take a gradient step for each neuron in each layer
+                network = [[gradient_step(neuron, grad, -learning_rate)
+                for neuron, grad in zip(layer, layer_grad)]
+                for layer, layer_grad in zip(network, gradients)]
+    print(f"first layer {network[-1]}")
+    num_correct = 0
+    for n in range(1, 101):
+        x = binary_encode(n)
+        predicted = argmax(feedForward(network, x)[-1])
+        actual = argmax(fizz_buzz_encode(n))
+        labels = [str(n), "fizz", "buzz", "fizzbuzz"]
+       # print(n, labels[predicted], labels[actual])
+        if predicted == actual:
+            num_correct += 1
+    print(num_correct, "/", 100)
+
 if __name__ == "__main__": main()
