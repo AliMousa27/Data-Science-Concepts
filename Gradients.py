@@ -1,81 +1,155 @@
-from numpy import mean
-import vectors
-import math,random
+from vectors import Vector, dot,distance, add, scalar_multiply,vector_mean
+import random
 
-from typing import Callable,List
-#returns the gradient at a given point
-def differenceQuotient(function: Callable[[float],float],point:float,changeAmount:float) -> float:
-    return (function(point+changeAmount)-function(point))/changeAmount
-def func(num):
-    return num*num
+def sum_of_squares(v: Vector) -> float:
+    """Computes the sum of squared elements in v"""
+    return dot(v, v)
 
-def paritalDifferenceQuotient(function: Callable[[List[float]],float],
-                              vector:List[float],
-                              index:int,#index of the ith elemnt of the vector that we want to change
-                              changeAmount:float) -> float:
-    #first copy all the elemnts into a new vector and add the change amount only if the elemnt is 
-    # the i-th element
-    increase=[dimension + (changeAmount if j==index else 0)#only add when we reach the ith element in the vector
-              #that we want the chanve amount of
-              for j,dimension in enumerate(vector)]
-    return (function(increase)-function(vector))/changeAmount
+from typing import Callable
 
-#estimates the gradient for each and every variable of the funciton by iterating over them
-def estimateGradient(f: Callable[[List[float]], float],
-                      v: List[float],
+def difference_quotient(f: Callable[[float], float],
+                        x: float,
+                        h: float) -> float:
+    return (f(x + h) - f(x)) / h
+
+def square(x: float) -> float:
+    return x * x
+
+def derivative(x: float) -> float:
+    return 2 * x
+
+def estimate_gradient(f: Callable[[Vector], float],
+                      v: Vector,
                       h: float = 0.0001):
-    return [paritalDifferenceQuotient(f, v, i, h)
-            for i in range(len(v))]        
-    
+    return [partial_difference_quotient(f, v, i, h)
+            for i in range(len(v))]
 
 
-def gradient_step(v: List[float], gradient: List[float], step_size: float) -> List[float]:
+def gradient_step(v: Vector, gradient: Vector, step_size: float) -> Vector:
     """Moves `step_size` in the `gradient` direction from `v`"""
     assert len(v) == len(gradient)
-    #multiply by the step size to no overshoot. if graident is small we take a small step
-    #when gradient is 0 we stop moving 
-    step = vectors.scalarMultiply(step_size, gradient)
-    #then we add the step size to the original point to move towards max/min
-    #then we add 0 basically to it if we reach max or min
-    return vectors.addVectors(v, step)
+    step = scalar_multiply(step_size, gradient)
+    return add(v, step)
 
-def sum_of_squares_gradient(v: List[float]) -> List[float]:
+def sum_of_squares_gradient(v: Vector) -> Vector:
     return [2 * v_i for v_i in v]
 
+# x ranges from -50 to 49, y is always 20 * x + 5
+inputs = [(x, 20 * x + 5) for x in range(-50, 50)]
 
-v = [random.uniform(-10, 10) for i in range(3)]
-    
-#should be a larger range to optimize the function
-for epoch in range(1):
-    grad = sum_of_squares_gradient(v)    # compute the gradient at v
-    v = gradient_step(v, grad, -0.01)    # take a negative gradient step
-    print(epoch, v)
-    
-#assert vectors.distanceBetweenVectors(v, [0, 0, 0]) < 0.001    # v should be close to 0
-
-
-inputs = [(x, x * x + 5) for x in range(-50, 50)]
-def linear_gradient(x: float, y: float, theta: List[float]) -> List[float]:
+def linear_gradient(x: float, y: float, theta: Vector) -> Vector:
     slope, intercept = theta
     predicted = slope * x + intercept    # The prediction of the model.
     error = (predicted - y)              # error is (predicted - actual)
     squared_error = error ** 2           # We'll minimize squared error
-    grad = [2 * error * x*x, 2 * error]    # using its gradient.
+    grad = [2 * error * x, 2 * error]    # using its gradient.
     return grad
 
-#start at random value
-theta = [random.uniform(-1,1),random.uniform(-1,1)]
-stepSize= -0.001
-for epoch in range(100):
-    meanGrad = vectors.vectorMeans([linear_gradient(x,y,theta) for x,y in inputs])
-    #take step to optimize theta
-    theta = gradient_step(theta,meanGrad,stepSize)
-    print(epoch,theta)
+from typing import TypeVar, List, Iterator
+
+T = TypeVar('T')  # this allows us to type "generic" functions
+
+def minibatches(dataset: List[T],
+                batch_size: int,
+                shuffle: bool = True) -> Iterator[List[T]]:
+    """Generates `batch_size`-sized minibatches from the dataset"""
+    # Start indexes 0, batch_size, 2 * batch_size, ...
+    batch_starts = [start for start in range(0, len(dataset), batch_size)]
+
+    if shuffle: random.shuffle(batch_starts)  # shuffle the batches
+
+    for start in batch_starts:
+        end = start + batch_size
+        yield dataset[start:end]
+def partial_difference_quotient(f: Callable[[Vector], float],
+                                    v: Vector,
+                                    i: int,
+                                    h: float) -> float:
+        """Returns the i-th partial difference quotient of f at v"""
+        w = [v_j + (h if j == i else 0)    # add h to just the ith element of v
+             for j, v_j in enumerate(v)]
+    
+        return (f(w) - f(v)) / h
+def main():
+    xs = range(-10, 11)
+    actuals = [derivative(x) for x in xs]
+    estimates = [difference_quotient(square, x, h=0.001) for x in xs]
+    
+    # plot to show they're basically the same
+    import matplotlib.pyplot as plt
+    plt.title("Actual Derivatives vs. Estimates")
+    plt.plot(xs, actuals, 'rx', label='Actual')       # red  x
+    plt.plot(xs, estimates, 'b+', label='Estimate')   # blue +
+    plt.legend(loc=9)
+    # plt.show()
     
     
-'''for epoch in range(100):
-    for x, y in inputs:
-        grad = linear_gradient(x,y,theta)
-    #take step to optimize theta
-        theta = gradient_step(theta,grad,stepSize)
-        print(epoch,theta)'''
+    plt.close()
+    
+    
+    
+    
+    # "Using the Gradient" example
+    
+    # pick a random starting point
+    v = [random.uniform(-10, 10) for i in range(3)]
+    
+    for epoch in range(1000):
+        grad = sum_of_squares_gradient(v)    # compute the gradient at v
+        v = gradient_step(v, grad, -0.01)    # take a negative gradient step
+        print(epoch, v)
+    
+    assert distance(v, [0, 0, 0]) < 0.001    # v should be close to 0
+    
+    
+    # First "Using Gradient Descent to Fit Models" example
+    
+    
+    
+    # Start with random values for slope and intercept.
+    theta = [random.uniform(-1, 1), random.uniform(-1, 1)]
+    
+    learning_rate = 0.001
+    
+    for epoch in range(5000):
+        # Compute the mean of the gradients
+        grad = vector_mean([linear_gradient(x, y, theta) for x, y in inputs])
+        # Take a step in that direction
+        theta = gradient_step(theta, grad, -learning_rate)
+        print(epoch, theta)
+    
+    slope, intercept = theta
+    assert 19.9 < slope < 20.1,   "slope should be about 20"
+    assert 4.9 < intercept < 5.1, "intercept should be about 5"
+    
+    
+    # Minibatch gradient descent example
+    
+    theta = [random.uniform(-1, 1), random.uniform(-1, 1)]
+    
+    for epoch in range(1000):
+        for batch in minibatches(inputs, batch_size=20):
+            grad = vector_mean([linear_gradient(x, y, theta) for x, y in batch])
+            theta = gradient_step(theta, grad, -learning_rate)
+        print(epoch, theta)
+    
+    slope, intercept = theta
+    assert 19.9 < slope < 20.1,   "slope should be about 20"
+    assert 4.9 < intercept < 5.1, "intercept should be about 5"
+    
+    
+    # Stochastic gradient descent example
+    
+    theta = [random.uniform(-1, 1), random.uniform(-1, 1)]
+    
+    for epoch in range(100):
+        for x, y in inputs:
+            grad = linear_gradient(x, y, theta)
+            theta = gradient_step(theta, grad, -learning_rate)
+        print(epoch, theta)
+    
+    slope, intercept = theta
+    assert 19.9 < slope < 20.1,   "slope should be about 20"
+    assert 4.9 < intercept < 5.1, "intercept should be about 5"
+    
+if __name__ == "__main__": main()
