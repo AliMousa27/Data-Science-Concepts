@@ -8,20 +8,18 @@ from Gradients import gradient_step
 def stepFunction(x : float) -> float:
     return 1 if x>=0 else 0
 
-
-
 #computes the weighted sum of inputs x
 def perceptronOutput(weights: Vector, bias: float, x:Vector) -> float:
     #returns 1 if the perceptron should fire 0 if it shouldnt
     return stepFunction(dot(x,weights)+bias)
 
-def sigmoid(x:float)->float:
+def sigmod(x:float)->float:
     return 1/(1+math.exp(-x))
 
 def neuronOutput(weights: Vector, inputs: Vector)->float:
     """function to out put the calculation between the weighted sum inputted into sigmoid. 
     Bias is the last element of the weights and inputs will include a 1"""
-    return sigmoid(dot(weights,inputs))
+    return sigmod(dot(weights,inputs))
 
  
 """ Neural network is a 3d list,
@@ -41,11 +39,11 @@ def feedForward(neuralNetwork: List[List[Vector]],
         inputWithBias = inputVector + [1] # Add a constant.
         #make the calculation for each neuron in the layer
         currentOutPut =[neuronOutput(neuron,inputWithBias) for neuron in layer]
-        #add it to the list of outputs to get the gradient of all the layers
+        #add it to the list of outputs
         outputs.append(currentOutPut)
         #then the input of the next layer is the output of the current layer
         inputVector = currentOutPut
-    print(outputs)
+        
     return outputs
 
 def sqerrorGradients(network: List[List[Vector]],
@@ -61,16 +59,7 @@ def sqerrorGradients(network: List[List[Vector]],
     
     # gradients with respect to output neuron pre-activation outputs
     #here the graidnet uses the chain rule as now we multiply the sigmoid derivatve by the error
-    #basically the derivative of the cost with respect to the weight is:
-    #derivaitve of output with respect to weight times dz/dw
-    #derivaitve of activiation with respect to pre activation output da/dz
-    #times derivaitve of output with respect to weight cost with respect to activation output dC/da
-    #dC/da = 2(activtation-target) 2 because the cost is the squared error
-    #da/dz= sigmoidPrime(z) thats because we apply sigmoid to z so we just take derivative
-    #dz/dw = a which is the value of the activation 
-    #overall the gradient for the output layer is the product of the previously listed derivatives
-    
-    outputDeltas = [output * (1 - output) * 2* (output - target)
+    outputDeltas = [output * (1 - output) * (output - target)
                     for output, target in zip(outputs, targetVector)]
     
     # gradients with respect to output neuron weights
