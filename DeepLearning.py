@@ -2,7 +2,7 @@ from turtle import forward
 from typing import List,Callable,Iterable,Tuple
 from vectors import dot
 from numpy import gradient, imag
-from NeuralNetwork import sigmoid
+from NeuralNetworks import sigmoid
 from probabilty import inverse_normal_cdf
 import random
 import tqdm
