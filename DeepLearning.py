@@ -1,5 +1,6 @@
 from turtle import forward
 from typing import List,Callable,Iterable,Tuple
+from Gradients import derivative
 from vectors import dot
 from numpy import gradient, imag
 from NeuralNetworks import sigmoid
@@ -288,13 +289,46 @@ def tanh(x: float) -> float:
         em2x = math.exp(-2 * x)
         return (1 - em2x) / (1 + em2x)
   
-  
+#function to make a probabilty disturbution of the output layer of a neural network
+def softmax(tensor: Tensor) -> Tensor:
+    if is1D(tensor):
+        largest = max(tensor)
+        exps = [math.exp(x - largest) for x in tensor]
+        sum = sum(exps)
+        return [num / sum for num in exps]
+    else:
+        return [softmax(arr) for arr in tensor]
+        
+class SoftmaxCrossEntropy(Loss):
+    #class to calculate the negative log likelihood from our
+    #output probability vector
+    
+    def loss(self, predictedOutput: Tensor, actualOutput: Tensor):
+        #get the probability vector from the softmax function
+        probabilityVector = softmax(predictedOutput)
+        #add very small number to avoid taking log(0)
+        function = lambda probabilty, actual: math.log(probabilty + 1e-30) * actual
+        
+        likelihoods=tensorCombine(function,probabilityVector,actualOutput)
+        #get negative sum
+        return -tensorSum(likelihoods)
+    
+    def gradient(self, predictedOutput: Tensor, actualOutput: Tensor):
+        probabilityVector = softmax(predictedOutput)
+        fucntion = lambda probabilty, actual: probabilty-actual
+        return tensorCombine(function, probabilityVector, actualOutput)
+        
 class Tanh(Layer):
     def forward(self, input: Tensor) -> Tensor:
         #save tanh output to use in backpropagation
         #and apply tanh to each element of the input tensor
         self.tanh = tensorApply(tanh,input)
         return self.tanh
+    
+    def backward(self, gradient):
+        derivative = lambda tanh,grad: 1-tanh**2 * grad
+        return tensorCombine(derivative,self.tanh,gradient)
+    
 def main():
     
     # XOR
