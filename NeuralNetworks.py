@@ -13,13 +13,13 @@ def perceptronOutput(weights: Vector, bias: float, x:Vector) -> float:
     #returns 1 if the perceptron should fire 0 if it shouldnt
     return stepFunction(dot(x,weights)+bias)
 
-def sigmod(x:float)->float:
+def sigmoid(x:float)->float:
     return 1/(1+math.exp(-x))
 
 def neuronOutput(weights: Vector, inputs: Vector)->float:
-    """function to out put the calculation between the weighted sum inputted into sigmoid. 
+    """function to output the calculation between the weighted sum inputted into sigmoid. 
     Bias is the last element of the weights and inputs will include a 1"""
-    return sigmod(dot(weights,inputs))
+    return sigmoid(dot(weights,inputs))
 
  
 """ Neural network is a 3d list,
@@ -58,18 +58,21 @@ def sqerrorGradients(network: List[List[Vector]],
     hiddenOuputs, outputs = feedForward(network,inputVector)
     
     # gradients with respect to output neuron pre-activation outputs
-    #here the graidnet uses the chain rule as now we multiply the sigmoid derivatve by the error
-    outputDeltas = [output * (1 - output) * (output - target)
+    #so essentially its the chain
+    #here the graidnet uses the chain rule as now we multiply the sigmoid derivatve by the squared error derivative
+    outputDeltas = [output * (1 - output) * 2*(output - target)
                     for output, target in zip(outputs, targetVector)]
     
     # gradients with respect to output neuron weights
+    #this line its still the chain rule now we just multiply by the output activation of the previous 
+    # layer
     outputGrads = [[outputDeltas[i] * hiddenOutput #multiply each output gradient with the hidden neuron weights
                     for hiddenOutput in hiddenOuputs + [1]]#add the bias constant
                     for i, outputNeuron in enumerate(network[-1])]#enumarate over the last layer in the network
     
     # gradients with respect to hidden neuron pre-activation outputs
-    hiddenDeltas = [hiddenOutput * (1 - hiddenOutput) *#multiply the gradient of the hiddeninput sigmoid function 
-    dot(outputDeltas, [n[i] for n in network[-1]])# by the sum of the loss gradient with the last layer of neurons in the network
+    hiddenDeltas = [hiddenOutput * (1 - hiddenOutput) * 
+                    dot(outputDeltas, [n[i] for n in network[-1]])# by the sum of the loss gradient with the last layer of neurons in the network
     for i, hiddenOutput in enumerate(hiddenOuputs)]
     
     #2 pervious variables made use of the chain rule
@@ -166,7 +169,7 @@ def main():
     ]
     
     learning_rate = 1.0
-    with tqdm.trange(1) as t:
+    with tqdm.trange(50) as t:
         for epoch in t:
             for x, y in zip(xs, ys):
                 gradients = sqerrorGradients(network, x, y)

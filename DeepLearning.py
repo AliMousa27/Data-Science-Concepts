@@ -6,6 +6,7 @@ from NeuralNetworks import sigmoid
 from probabilty import inverse_normal_cdf
 import random
 import tqdm
+import math
 Tensor = list
 
 
@@ -278,7 +279,15 @@ class Momentum(Optimizer):
                 param,
                 update
             )
-            
+          
+def tanh(x: float) -> float:
+    if x < -100: return -1
+    elif x > 100: return 1
+    else:
+        #this is e^-2x
+        em2x = math.exp(-2 * x)
+        return (1 - em2x) / (1 + em2x)
+  
 def main():
     
     # XOR
@@ -306,8 +315,5 @@ def main():
                 optimizer.step(network)
                 
     
-    for param in network.params():
-        print(param)
-        
-    print(network.forward([1,1]))
+
 if __name__ =="__main__":main()
