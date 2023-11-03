@@ -317,7 +317,26 @@ class SoftmaxCrossEntropy(Loss):
         probabilityVector = softmax(predictedOutput)
         fucntion = lambda probabilty, actual: probabilty-actual
         return tensorCombine(function, probabilityVector, actualOutput)
-        
+class Dropout(Layer):
+    def __init__(self,probability:float) -> None:
+        self.train = True
+        self.probability = probability
+    def forward(self, input: Tensor) -> Tensor:
+        if self.train:
+            #create a mask of 0s and 1s with the same shape as the input
+            self.mask = tensorApply(lambda _: 0 if random.random() < self.probability else 1,input)
+            #apply the mask to the input
+            return tensorCombine(lambda x,m: x*m,input,self.mask)
+        else:
+            #if we are not training just return the input
+            return input
+    def backward(self, gradient: Tensor) -> Tensor:
+        if self.train:
+            #apply the mask to the gradient
+            return tensorCombine(lambda x,m: x*m,gradient,self.mask)
+        else:
+            raise RuntimeError("don't call backward when not in train mode")
+    
 class Tanh(Layer):
     def forward(self, input: Tensor) -> Tensor:
         #save tanh output to use in backpropagation
