@@ -288,6 +288,13 @@ def tanh(x: float) -> float:
         em2x = math.exp(-2 * x)
         return (1 - em2x) / (1 + em2x)
   
+  
+class Tanh(Layer):
+    def forward(self, input: Tensor) -> Tensor:
+        #save tanh output to use in backpropagation
+        #and apply tanh to each element of the input tensor
+        self.tanh = tensorApply(tanh,input)
+        return self.tanh
 def main():
     
     # XOR
