@@ -1,12 +1,11 @@
-from turtle import forward
 from typing import List,Callable,Iterable,Tuple
-from Gradients import derivative
 from vectors import dot
-from numpy import gradient, imag
-from NeuralNetworks import sigmoid
+from NeuralNetworks import argmax, sigmoid
 from probabilty import inverse_normal_cdf
 import random
 import tqdm
+import matplotlib.pyplot as plt
+import mnist
 import math
 Tensor = list
 
@@ -260,13 +259,13 @@ class Momentum(Optimizer):
     def __init__(self, learningRate:float, momentum : float = 0.9) -> None:
         self.learningRate = learningRate
         self.momentum : momentum
-        self.updates = List[Tensor]=[] #running average
+        self.updates : List[Tensor]=[] #running average
         
     def step(self, layer: Layer) -> None:
         
         #if we have no updates start with zeroes as the updates
         if not self.updates:
-            updates = [zeroesTensor(grad) for grad in layer.grads]
+            updates = [zeroesTensor(grad) for grad in layer.grads()]
         for update,param,grad in zip(self.updates,layer.params(),layer.grads()):    
             #apply momentum
             update[:] = tensorCombine(
@@ -294,29 +293,38 @@ def softmax(tensor: Tensor) -> Tensor:
     if is1D(tensor):
         largest = max(tensor)
         exps = [math.exp(x - largest) for x in tensor]
-        sum = sum(exps)
-        return [num / sum for num in exps]
+        summation = sum(exps)
+        return [num / summation for num in exps]
     else:
         return [softmax(arr) for arr in tensor]
         
 class SoftmaxCrossEntropy(Loss):
-    #class to calculate the negative log likelihood from our
-    #output probability vector
-    
-    def loss(self, predictedOutput: Tensor, actualOutput: Tensor):
-        #get the probability vector from the softmax function
-        probabilityVector = softmax(predictedOutput)
-        #add very small number to avoid taking log(0)
-        function = lambda probabilty, actual: math.log(probabilty + 1e-30) * actual
-        
-        likelihoods=tensorCombine(function,probabilityVector,actualOutput)
-        #get negative sum
+    """
+    This is the negative-log-likelihood of the observed values, given the
+    neural net model. So if we choose weights to minimize it, our model will
+    be maximizing the likelihood of the observed data.
+    """
+    def loss(self, predicted: Tensor, actual: Tensor) -> float:
+        # Apply softmax to get probabilities
+        probabilities = softmax(predicted)
+
+        # This will be log p_i for the actual class i and 0 for the other
+        # classes. We add a tiny amount to p to avoid taking log(0).
+        likelihoods = tensorCombine(lambda p, act: math.log(p + 1e-30) * act,
+                                     probabilities,
+                                     actual)
+
+        # And then we just sum up the negatives.
         return -tensorSum(likelihoods)
-    
-    def gradient(self, predictedOutput: Tensor, actualOutput: Tensor):
-        probabilityVector = softmax(predictedOutput)
-        fucntion = lambda probabilty, actual: probabilty-actual
-        return tensorCombine(function, probabilityVector, actualOutput)
+
+    def gradient(self, predicted: Tensor, actual: Tensor) -> Tensor:
+        probabilities = softmax(predicted)
+
+        # Isn't this a pleasant equation?
+        return tensorCombine(lambda p, actual: p - actual,
+                              probabilities,
+                              actual)
+
 class Dropout(Layer):
     def __init__(self,probability:float) -> None:
         self.train = True
@@ -347,12 +355,122 @@ class Tanh(Layer):
     def backward(self, gradient):
         derivative = lambda tanh,grad: 1-tanh**2 * grad
         return tensorCombine(derivative,self.tanh,gradient)
+
+def encode(number : int, numOfLabels:int =10):
+    return [1 if i == number else 0 for i in range(numOfLabels)]
+
+def loop(model: Layer,
+            images: List[Tensor],
+            labels: List[Tensor],
+            loss: Loss,
+            optimizer: Optimizer = None) -> None:
+    correct = 0         # Track number of correct predictions.
+    total_loss = 0.0    # Track total loss.
     
+    with tqdm.trange(len(images)) as t:
+        for i in t:
+            predicted = model.forward(images[i])             # Predict.
+            if argmax(predicted) == argmax(labels[i]):       # Check for
+                correct += 1                                 # correctness.
+                total_loss += loss.loss(predicted, labels[i])    # Compute loss.
+                #print(f"correct is {correct} out of {i}")
+                # If we're training, backpropagate gradient and update weights.
+            if optimizer is not None:
+                gradient = loss.gradient(predicted, labels[i])
+                model.backward(gradient)
+                optimizer.step(model)
+    
+                # And update our metrics in the progress bar.
+            avg_loss = total_loss / (i + 1)
+            acc = correct / (i + 1)
+            t.set_description(f"mnist loss: {avg_loss:.3f} acc: {acc:.3f}")
+    #print(f"correct is {correct} out of {len(images)}")
 def main():
+    
+    # This will download the data, change this to where you want it.
+    # (Yes, it's a 0-argument function, that's what the library expects.)
+    # (Yes, I'm assigning a lambda to a variable, like I said never to do.)
+    mnist.temporary_dir = lambda: '/tmp'
+    
+    # Each of these functions first downloads the data and returns a numpy array.
+    # We call .tolist() because our "tensors" are just lists.
+    train_images = mnist.train_images().tolist()
+    train_labels = mnist.train_labels().tolist()
+    
+    assert shape(train_images) == [60000, 28, 28]
+    assert shape(train_labels) == [60000]
+    
+    import matplotlib.pyplot as plt
+    
+    fig, ax = plt.subplots(10, 10)
+    
+    '''for i in range(10):
+        for j in range(10):
+            # Plot each image in black and white and hide the axes.
+            ax[i][j].imshow(train_images[10 * i + j], cmap='Greys')
+            ax[i][j].xaxis.set_visible(False)
+            ax[i][j].yaxis.set_visible(False)'''
+    
+    # plt.show()
+    
+
+    test_images = mnist.test_images().tolist()
+    test_labels = mnist.test_labels().tolist()
+    
+    assert shape(test_images) == [10000, 28, 28]
+    assert shape(test_labels) == [10000]
+    
+    
+    # Recenter the images
+    
+    # Compute the average pixel value
+    avg = tensorSum(train_images) / 60000 / 28 / 28
+    
+    # Recenter, rescale, and flatten
+    train_images = [[(pixel - avg) / 256 for row in image for pixel in row]
+                    for image in train_images]
+    test_images = [[(pixel - avg) / 256 for row in image for pixel in row]
+                   for image in test_images]
+
+    
+    # After centering, average pixel should be very close to 0
+    
+    
+    # One-hot encode the test data
+    train_labels = [encode(label) for label in train_labels]
+    test_labels = [encode(label) for label in test_labels]
+    
+    #train_labels = [tensorSum(label) for label in train_labels]
+    #test_labels = [tensorSum(label) for label in test_labels]
+    
+    
+    
+    # Training loop
+    
+    
+    # The logistic regression model for MNIST
+
+    
+    random.seed(0)
+    
+    # Logistic regression is just a linear layer followed by softmax
+    model = Linear(784, 10)
+    loss = SoftmaxCrossEntropy()
+    
+    # This optimizer seems to work
+    optimizer = GradientDescent(learningRate=0.01)
+    
+    # Train on the training data
+    loop(model, train_images, train_labels, loss, optimizer)
+    
+    # Test on the test data (no optimizer means just evaluate)
+    loop(model, test_images, test_labels, loss)
+    
+
     
     # XOR
     # training data
-    xs = [[0., 0], [0., 1], [1., 0], [1., 1]]
+    '''xs = [[0., 0], [0., 1], [1., 0], [1., 1]]
     ys = [[0.], [1.], [1.], [0.]]
     
     network = Sequential(
@@ -372,7 +490,8 @@ def main():
                 gradient =loss.gradient(predicted,y)
                 network.backward(gradient)
                 
-                optimizer.step(network)
+                optimizer.step(network)'''
+
                 
     
 
