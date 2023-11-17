@@ -1,4 +1,3 @@
-from ast import main
 from os import name
 import random
 
@@ -55,28 +54,28 @@ class KMeans():
                     self.means = clusterMeans(self.k,inputs,newAssignments)
                     assignments=newAssignments
                     
-    def main():
+def main():
         
-        inputs: List[List[float]] = [[-14,-5],[13,13],[20,23],[-19,-11],[-9,-16],[21,27],[-49,15],[26,13],[-46,5],[-34,-1],[11,15],[-49,0],[-22,-16],[19,28],[-12,-8],[-13,-19],[-41,8],[-11,-6],[-25,-9],[-18,-3]]
-        random.seed(12)                   
-        clusterer = KMeans(k=3)
-        clusterer.train(inputs)
-        means = sorted(clusterer.means)   
+    inputs: List[List[float]] = [[-14,-5],[13,13],[20,23],[-19,-11],[-9,-16],[21,27],[-49,15],[26,13],[-46,5],[-34,-1],[11,15],[-49,0],[-22,-16],[19,28],[-12,-8],[-13,-19],[-41,8],[-11,-6],[-25,-9],[-18,-3]]
+    random.seed(12)                   
+    clusterer = KMeans(k=3)
+    clusterer.train(inputs)
+    means = sorted(clusterer.means)   
         
-        assert len(means) == 3
+    assert len(means) == 3
         
-        # Check that the means are close to what we expect.
-        assert squared_distance(means[0], [-44, 5]) < 1
-        assert squared_distance(means[1], [-16, -10]) < 1
-        assert squared_distance(means[2], [18, 20]) < 1
+    # Check that the means are close to what we expect.
+    assert squared_distance(means[0], [-44, 5]) < 1
+    assert squared_distance(means[1], [-16, -10]) < 1
+    assert squared_distance(means[2], [18, 20]) < 1
         
-        random.seed(0)
-        clusterer = KMeans(k=2)
-        clusterer.train(inputs)
-        means = sorted(clusterer.means)
+    random.seed(0)
+    clusterer = KMeans(k=2)
+    clusterer.train(inputs)
+    means = sorted(clusterer.means)
         
-        assert len(means) == 2
-        assert squared_distance(means[0], [-26, -5]) < 1
-        assert squared_distance(means[1], [18, 20]) < 1
+    assert len(means) == 2
+    assert squared_distance(means[0], [-26, -5]) < 1
+    assert squared_distance(means[1], [18, 20]) < 1
         
 if name == "__main__":main()
