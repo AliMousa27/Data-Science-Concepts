@@ -404,14 +404,14 @@ def main():
     
     fig, ax = plt.subplots(10, 10)
     
-    '''for i in range(10):
+    for i in range(10):
         for j in range(10):
             # Plot each image in black and white and hide the axes.
             ax[i][j].imshow(train_images[10 * i + j], cmap='Greys')
             ax[i][j].xaxis.set_visible(False)
-            ax[i][j].yaxis.set_visible(False)'''
+            ax[i][j].yaxis.set_visible(False)
     
-    # plt.show()
+    plt.show()
     
 
     test_images = mnist.test_images().tolist()
@@ -453,7 +453,6 @@ def main():
     
     random.seed(0)
     
-    # Logistic regression is just a linear layer followed by softmax
     model = Linear(784, 10)
     loss = SoftmaxCrossEntropy()
     
