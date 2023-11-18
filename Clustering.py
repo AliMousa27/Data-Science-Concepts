@@ -1,8 +1,9 @@
 from os import name
 import random
 import numpy as np
+from scipy import cluster
 import tqdm
-from vectors import Vector,vector_mean,squared_distance
+from vectors import Vector,vector_mean,squared_distance, distance
 from typing import List, NamedTuple, Union, Callable
 import itertools
 from matplotlib import pyplot as plt
@@ -87,8 +88,45 @@ def getValues(cluster: Cluster):
         #recursivly go through each child in cluster and get its values as a list
         return [value for child in cluster.children for value in getValues(child)]
     
-    
-    
+def clusterDistance(cluster1: Cluster,cluster2: Cluster,
+                    #stratget could be for example the minimum distance between clusters
+                    strategy:Callable = min):
+    #get all distances between clus1 and clus2 then get min distance 
+    return strategy(
+        [distance(
+            [v1,v2] for v1 in cluster1
+            for v2 in cluster2
+        )]
+    )
+def getMergeOrder(cluster: Cluster):
+    if isinstance(cluster,Leaf):
+        #we havent merged yet
+        return float('inf')
+    return cluster.order
+def getChildren(cluster:Cluster):
+    if isinstance(cluster,Leaf):
+        #we havent merged yet
+        raise TypeError("Leaf aint got no children")
+    return cluster.children
+
+def bottomUpCluster(inputs: List[Vector],
+                    strategy: Callable=min):
+    #start with leaves
+    clusters: List[Cluster]= [Leaf(input) for input in inputs]
+    def pairDistance(pair: tuple(Cluster,Cluster)):
+        return clusterDistance[pair[0],pair[1]]
+    #while  we still have clusters to merge
+    while len(clusters)>1:
+        #find 2 closest clusters
+        c1,c2 = min(((cluster1,cluster2) for i,cluster1 in enumerate(clusters)
+                    for cluster2 in cluster1[:i]),key=pairDistance)    
+        #remove them from the cluster
+        clusters = [cluster for cluster in clusters if c1!=cluster and c2!=cluster]
+        #merge the clusters
+        mergedClusters = Merged((c1,c2), order=len(clusters))
+        #add the merged to the clusters
+        clusters.append(mergedClusters)
+    return clusters[0]    
     
 def main():
     '''inputs: List[List[float]] = [[-14,-5],[13,13],[20,23],[-19,-11],[-9,-16],[21,27],[-49,15],[26,13],[-46,5],[-34,-1],[11,15],[-49,0],[-22,-16],[19,28],[-12,-8],[-13,-19],[-41,8],[-11,-6],[-25,-9],[-18,-3]]
