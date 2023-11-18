@@ -127,7 +127,25 @@ def bottomUpCluster(inputs: List[Vector],
         #add the merged to the clusters
         clusters.append(mergedClusters)
     return clusters[0]    
-    
+    return clusters[0]
+
+def generate_clusters(base_cluster: Cluster,
+                      num_clusters: int) -> List[Cluster]:
+    # start with a list with just the base cluster
+    clusters = [base_cluster]
+
+    # as long as we don't have enough clusters yet...
+    while len(clusters) < num_clusters:
+        # choose the last-merged of our clusters
+        next_cluster = min(clusters, key=getMergeOrder())
+        # remove it from the list
+        clusters = [c for c in clusters if c != next_cluster]
+
+        # and add its children to the list (i.e., unmerge it)
+        clusters.extend(getChildren(next_cluster))
+
+    # once we have enough clusters...
+    return clusters
 def main():
     '''inputs: List[List[float]] = [[-14,-5],[13,13],[20,23],[-19,-11],[-9,-16],[21,27],[-49,15],[26,13],[-46,5],[-34,-1],[11,15],[-49,0],[-22,-16],[19,28],[-12,-8],[-13,-19],[-41,8],[-11,-6],[-25,-9],[-18,-3]]
     random.seed(12)                   
@@ -173,6 +191,6 @@ def main():
     plt.imshow(newJogoat)
     plt.axis("off")
     plt.show()'''
-    assert getValues(merged) == [[10,20],[30,-15]]
+    
         
 if __name__ == "__main__":main()
