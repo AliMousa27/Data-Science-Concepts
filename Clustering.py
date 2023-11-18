@@ -3,7 +3,7 @@ import random
 import numpy as np
 import tqdm
 from vectors import Vector,vector_mean,squared_distance
-from typing import List
+from typing import List, NamedTuple, Union, Callable
 import itertools
 from matplotlib import pyplot as plt
 import matplotlib.image as mpimg
@@ -64,9 +64,32 @@ def squaredClusteringErrors(k: int, inputs: List[Vector]) -> float:
     #sum of th total squared distance between each input and its assigned cluster
     return sum(squared_distance(clusters.means[assignment], input) 
                for input,assignment in zip(inputs,assignments))
+#method 2: bottom up clustering, merge each input with the one closest to it
+class Leaf(NamedTuple):
+    value: Vector
+leaf1= Leaf([10,20])
+leaf2= Leaf([30,-15])
+class Merged(NamedTuple):
+    children: tuple
+    order: int
+#a merged cluster with 2 merged leaves means its of second order
+merged = Merged(children=(leaf1,leaf2),order=2)
+#a given cluster cna be either a leaf or merged
+Cluster = Union[Leaf,Merged]
 
+
+#helper function to get all the values inside a cluster
+def getValues(cluster: Cluster):
+    #base case
+    if isinstance(cluster,Leaf):
+        return [cluster.value],
+    else:
+        #recursivly go through each child in cluster and get its values as a list
+        return [value for child in cluster.children for value in getValues(child)]
     
-
+    
+    
+    
 def main():
     '''inputs: List[List[float]] = [[-14,-5],[13,13],[20,23],[-19,-11],[-9,-16],[21,27],[-49,15],[26,13],[-46,5],[-34,-1],[11,15],[-49,0],[-22,-16],[19,28],[-12,-8],[-13,-19],[-41,8],[-11,-6],[-25,-9],[-18,-3]]
     random.seed(12)                   
@@ -98,7 +121,7 @@ def main():
     plt.title("Total Error vs. # of Clusters")
     plt.show()'''
     
-    jogoatPath = r"jogoat.png"
+    '''  jogoatPath = r"jogoat.png"
     jogoat = mpimg.imread(jogoatPath)
     pixels = [pixel.tolist() for row in jogoat for pixel in row]
     #create 5 clusters aka the 5 most prevelant colors
@@ -111,6 +134,7 @@ def main():
     newJogoat = [[recolor(pixel) for pixel in row] for row in jogoat]
     plt.imshow(newJogoat)
     plt.axis("off")
-    plt.show()
+    plt.show()'''
+    assert getValues(merged) == [[10,20],[30,-15]]
         
 if __name__ == "__main__":main()
