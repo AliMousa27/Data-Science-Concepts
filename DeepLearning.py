@@ -137,80 +137,82 @@ def randomTensor(*dims: int, init: str = 'normal') -> Tensor:
     else:
         raise ValueError(f"unknown init: {init}")
     
+
 class Linear(Layer):
-    #inputDim tells us how many weights a neuron needs to have same length vector for dot to work
-    #output dim tells us how many neurons we need
-    def __init__(self, inputDim,outputDim,init="xavier") -> None:
-        """a layer of output dim neurons each with input dim weights and a bias"""
-        self.inputDim=inputDim
-        self.outputDim=outputDim
-        
-        #self.w[n] is the weights of the nth neuron 
-        self.w = randomTensor(outputDim,inputDim, init=init)
-        #add a bias to each out put neuron
-        self.b = randomTensor(outputDim,init=init)
-        
-    def forward(self, input):
-        #save input to use in backpropagation
+    def __init__(self, input_dim: int, output_dim: int, init: str = 'xavier') -> None:
+        """
+        A layer of output_dim neurons, each with input_dim weights
+        (and a bias).
+        """
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+
+        # self.w[o] is the weights for the o-th neuron
+        self.w = randomTensor(output_dim, input_dim, init=init)
+
+        # self.b[o] is the bias term for the o-th neuron
+        self.b = randomTensor(output_dim, init=init)
+
+    def forward(self, input: Tensor) -> Tensor:
+        # Save the input to use in the backward pass.
         self.input = input
-        #return one output per output neuron whcih is w * input + bias
-        return [dot(self.w[n], input) + self.b[n]
-                for n in range(self.outputDim)
-                ]
-        
-    def backward(self, gradients: Tensor) -> Tensor:
-    #gradients param is more or less the gradient of loss. so each derivative is with respec to it
-    # Each b[o] gets added to output[o], which means
-    # the gradient of b with respect to the output 
-    # is the same as the output gradient.
-        self.bGradients = gradients
-        
+
+        # Return the vector of neuron outputs.
+        return [dot(input, self.w[o]) + self.b[o]
+                for o in range(self.output_dim)]
+
+    def backward(self, gradient: Tensor) -> Tensor:
+        # Each b[o] gets added to output[o], which means
+        # the gradient of b is the same as the output gradient.
+        self.b_grad = gradient
+
         # Each w[o][i] multiplies input[i] and gets added to output[o].
         # So its gradient is input[i] * gradient[o].
-        #all this to say we multiply each input by the oth gradient 
-        self.wGradients = [[self.input[i] * gradients[o] for i in range(self.inputDim)] #iterate over each 
-                           #input mutliplied by the gradient of the oth neuron
-                           for o in range(self.outputDim)#iterate over each neuron
-                           ]
-        
+        self.w_grad = [[self.input[i] * gradient[o]
+                        for i in range(self.input_dim)]
+                       for o in range(self.output_dim)]
+
         # Each input[i] multiplies every w[o][i] and gets added to every
         # output[o]. So its gradient is the sum of w[o][i] * gradient[o]
         # across all the outputs.
-        return [sum(self.w[o][i] * gradients[o] for o in range(self.outputDim))
-                for i in range(self.inputDim)]
-        
-        
+        return [sum(self.w[o][i] * gradient[o] for o in range(self.output_dim))
+                for i in range(self.input_dim)]
+
     def params(self) -> Iterable[Tensor]:
-        return [self.w,self.b]
-    
+        return [self.w, self.b]
+
     def grads(self) -> Iterable[Tensor]:
-        return [self.wGradients,self.bGradients]
+        return [self.w_grad, self.b_grad]
     
 #this is a list of layers to represent a network
 class Sequential(Layer):
-    def __init__(self,layers: List[Layer]) -> None:
-        self.layers=layers
-        
-    def forward(self,input):
-        #just get the input of each layer in order
+    """
+    A layer consisting of a sequence of other layers.
+    It's up to you to make sure that the output of each layer
+    makes sense as the input to the next layer.
+    """
+    def __init__(self, layers: List[Layer]) -> None:
+        self.layers = layers
+
+    def forward(self, input):
+        """Just forward the input through the layers in order."""
         for layer in self.layers:
-            #make the input of the next layer equal to the output of the current layer we are on
             input = layer.forward(input)
         return input
+
     def backward(self, gradient):
-        #backpropgate the gradinet for each layer in reverse
+        """Just backpropagate the gradient through the layers in reverse."""
         for layer in reversed(self.layers):
             gradient = layer.backward(gradient)
         return gradient
-    
+
     def params(self) -> Iterable[Tensor]:
-        #return the paramaters for each layer
-        return (param for layer in self.layers
-                for param in layer.params())
-        
+        """Just return the params from each layer."""
+        return (param for layer in self.layers for param in layer.params())
+
     def grads(self) -> Iterable[Tensor]:
-        return (grad for layer in self.layers
-                for grad in layer.grads())
+        """Just return the grads from each layer."""
+        return (grad for layer in self.layers for grad in layer.grads())
         
 
 class Loss:
@@ -256,29 +258,32 @@ class GradientDescent(Optimizer):
         
 #class thats similar to grad descent but doesnt overreact to the gradient
 class Momentum(Optimizer):
-    def __init__(self, learningRate:float, momentum : float = 0.9) -> None:
-        self.learningRate = learningRate
-        self.momentum : momentum
-        self.updates : List[Tensor]=[] #running average
-        
+    def __init__(self,
+                 learning_rate: float,
+                 momentum: float = 0.9) -> None:
+        self.lr = learning_rate
+        self.mo = momentum
+        self.updates: List[Tensor] = []  # running average
+
     def step(self, layer: Layer) -> None:
-        
-        #if we have no updates start with zeroes as the updates
+        # If we have no previous updates, start with all zeros.
         if not self.updates:
-            updates = [zeroesTensor(grad) for grad in layer.grads()]
-        for update,param,grad in zip(self.updates,layer.params(),layer.grads()):    
-            #apply momentum
+            self.updates = [zeroesTensor(grad) for grad in layer.grads()]
+
+        for update, param, grad in zip(self.updates,
+                                       layer.params(),
+                                       layer.grads()):
+            # Apply momentum
             update[:] = tensorCombine(
-                lambda u,g: self.momentum * u + (1-self.momentum) * g,
+                lambda u, g: self.mo * u + (1 - self.mo) * g,
                 update,
-                grad
-            )
-            #take gradient stepm and update the params accoridngly for the current params of the neuron
+                grad)
+
+            # Then take a gradient step
             param[:] = tensorCombine(
-                lambda p,u : p -self.learningRate * u,
+                lambda p, u: p - self.lr * u,
                 param,
-                update
-            )
+                update)
           
 def tanh(x: float) -> float:
     if x < -100: return -1
@@ -324,7 +329,6 @@ class SoftmaxCrossEntropy(Loss):
         return tensorCombine(lambda p, actual: p - actual,
                               probabilities,
                               actual)
-
 class Dropout(Layer):
     def __init__(self,probability:float) -> None:
         self.train = True
@@ -347,14 +351,15 @@ class Dropout(Layer):
     
 class Tanh(Layer):
     def forward(self, input: Tensor) -> Tensor:
-        #save tanh output to use in backpropagation
-        #and apply tanh to each element of the input tensor
-        self.tanh = tensorApply(tanh,input)
+        # Save tanh output to use in backward pass.
+        self.tanh = tensorApply(tanh, input)
         return self.tanh
-    
-    def backward(self, gradient):
-        derivative = lambda tanh,grad: 1-tanh**2 * grad
-        return tensorCombine(derivative,self.tanh,gradient)
+
+    def backward(self, gradient: Tensor) -> Tensor:
+        return tensorCombine(
+            lambda tanh, grad: (1 - tanh ** 2) * grad,
+            self.tanh,
+            gradient)
 
 def encode(number : int, numOfLabels:int =10):
     return [1 if i == number else 0 for i in range(numOfLabels)]
@@ -397,12 +402,9 @@ def main():
     train_images = mnist.train_images().tolist()
     train_labels = mnist.train_labels().tolist()
     
-    assert shape(train_images) == [60000, 28, 28]
-    assert shape(train_labels) == [60000]
-    
     import matplotlib.pyplot as plt
     
-    fig, ax = plt.subplots(10, 10)
+    '''fig, ax = plt.subplots(10, 10)
     
     for i in range(10):
         for j in range(10):
@@ -411,18 +413,13 @@ def main():
             ax[i][j].xaxis.set_visible(False)
             ax[i][j].yaxis.set_visible(False)
     
-    plt.show()
+    plt.show()'''
     
 
     test_images = mnist.test_images().tolist()
     test_labels = mnist.test_labels().tolist()
     
-    assert shape(test_images) == [10000, 28, 28]
-    assert shape(test_labels) == [10000]
-    
-    
-    # Recenter the images
-    
+        
     # Compute the average pixel value
     avg = tensorSum(train_images) / 60000 / 28 / 28
     
@@ -431,24 +428,11 @@ def main():
                     for image in train_images]
     test_images = [[(pixel - avg) / 256 for row in image for pixel in row]
                    for image in test_images]
-
-    
-    # After centering, average pixel should be very close to 0
     
     
-    # One-hot encode the test data
     train_labels = [encode(label) for label in train_labels]
     test_labels = [encode(label) for label in test_labels]
-    
-    #train_labels = [tensorSum(label) for label in train_labels]
-    #test_labels = [tensorSum(label) for label in test_labels]
-    
-    
-    
-    # Training loop
-    
-    
-    # The logistic regression model for MNIST
+
 
     
     random.seed(0)
@@ -460,36 +444,39 @@ def main():
     optimizer = GradientDescent(learningRate=0.01)
     
     # Train on the training data
-    loop(model, train_images, train_labels, loss, optimizer)
+    #loop(model, train_images, train_labels, loss, optimizer)
     
     # Test on the test data (no optimizer means just evaluate)
-    loop(model, test_images, test_labels, loss)
+    #loop(model, test_images, test_labels, loss)
     
 
     
-    # XOR
-    # training data
-    '''xs = [[0., 0], [0., 1], [1., 0], [1., 1]]
-    ys = [[0.], [1.], [1.], [0.]]
+    # Name them so we can turn train on and off
+    dropout1 = Dropout(0.1)
+    dropout2 = Dropout(0.1)
     
-    network = Sequential(
-        [
-            Linear(2,2),#first layer takaes 2 and outputs 2
-            Sigmoid(),#sigmoid turns the 2 inputs into 2 outputs
-            Linear(2,1)#take 2 inputs and outputs 1 number
-        ]
-    )
-    optimizer = GradientDescent()
-    loss = SSE()
+    model = Sequential([
+        Linear(784, 30),  # Hidden layer 1: size 30
+        dropout1,
+        Tanh(),
+        Linear(30, 10),   # Hidden layer 2: size 10
+        dropout2,
+        Tanh(),
+        Linear(10, 10)    # Output layer: size 10
+    ])
     
-    with tqdm.trange(30000) as t:
-        for epoch in t:
-            for x,y in zip(xs,ys):
-                predicted = network.forward(x)
-                gradient =loss.gradient(predicted,y)
-                network.backward(gradient)
-                
-                optimizer.step(network)'''
+    
+    optimizer = Momentum(learning_rate=0.01, momentum=0.99)
+    loss = SoftmaxCrossEntropy()
+    
+    # Enable dropout and train (takes > 20 minutes on my laptop!)
+    dropout1.train = dropout2.train = True
+    loop(model, train_images, train_labels, loss, optimizer)
+    
+    # Disable dropout and evaluate
+    dropout1.train = dropout2.train = False
+    loop(model, test_images, test_labels, loss)
+    
 
                 
     
