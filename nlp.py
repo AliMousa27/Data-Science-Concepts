@@ -1,19 +1,25 @@
-from matplotlib import pyplot as plt
 import re
 from bs4 import BeautifulSoup 
 import requests
-data = [ ("big data", 100, 15), ("Hadoop", 95, 25), ("Python", 75, 50),
-         ("R", 50, 40), ("machine learning", 80, 20), ("statistics", 20, 60),
-         ("data science", 60, 70), ("analytics", 90, 3),
-         ("team player", 85, 85), ("dynamic", 2, 90), ("synergies", 70, 0),
-         ("actionable insights", 40, 30), ("think out of the box", 45, 10),
-         ("self-starter", 30, 50), ("customer focus", 65, 15),
-         ("thought leadership", 35, 35)]
+from collections import defaultdict
+from typing import Dict
+import random
 def fixUniCode(text : str) -> str:
     #u prefix denotes unicode string. This function replaces the unicode char with normal '
     return text.replace(u"\u2019","'")
 
-
+#transitions a dict where the key is a word and value is lsit of words that follow it
+def generateBigrams(transitions : Dict) -> str :
+    current = "."#means that next word will start a sentence
+    
+    result = []
+    while True:
+        #probable words that should follow
+        candidates=transitions[current]
+        current = random.choice(candidates)
+        result.append(current)
+        if current == "." : return " ".join(result)
+        
 
 def main():
     url = "http://radar.oreilly.com/2010/06/what-is-data-science"
@@ -28,6 +34,23 @@ def main():
 
     for paragraph in content.find_all("p"):
         words = re.findall(pattern=regex, string=fixUniCode(paragraph.text))
-        document.append(words)
-    print(document)
+        document.extend(words)
+    #create a deafult dict where the normal value for any key is an empty list
+    transitions = defaultdict(list)
+    #basically finding where each word ends and what word follows it
+    for prev,current in zip(document,document[1:]):
+        transitions[prev].append(current)    
+    #will spew out gibbrish most likely
+    print(generateBigrams(transitions))
+    
+    trigrams = defaultdict(list)
+    starts =[]
+    for prev,current,next in zip(document,document[1:],document[2:]):
+        if prev==".":
+            starts.append(current)
+        trigrams[(prev,current)].append(next)
+        
+        
+    
+    
 if __name__ == "__main__" : main()
