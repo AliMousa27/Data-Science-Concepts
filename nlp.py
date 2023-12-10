@@ -122,7 +122,7 @@ def topicWeight(d: int, word: str, k: int) -> float:
     """
     return pTopicGivenDocument(k,d) * pWordGivenTopic(word,k)
 
-def choose_new_topic(d: int, word: str) -> int:
+def chooseNewTopic(d: int, word: str) -> int:
     return sampleFrom([topicWeight(d, word, k)
                         for k in range(k)])
     
@@ -242,7 +242,7 @@ def main():
                 documentLengths[d] -= 1
 
                 # choose a new topic based on the weights
-                new_topic = choose_new_topic(d, word)
+                new_topic = chooseNewTopic(d, word)
                 documentTopics[d][i] = new_topic
 
                 # and now add it back to the counts
