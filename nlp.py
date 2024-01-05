@@ -5,14 +5,13 @@ from bs4 import BeautifulSoup
 from numpy import dot
 import requests
 from collections import defaultdict
-from typing import Counter, Dict,List, Tuple
+from typing import Counter, Dict,List, Text, Tuple
 import random
-from DeepLearning import Tensor, randomTensor, zeroesTensor
+from DeepLearning import Layer,Tensor, randomTensor, zeroesTensor,Sequential,Linear,SoftmaxCrossEntropy,Momentum,GradientDescent
 import tqdm
 from typing import Iterable
-from DeepLearning import Layer, Tensor, random_tensor, zeros_like
 from vectors import Vector
-
+import re
 def fixUniCode(text : str) -> str:
     #u prefix denotes unicode string. This function replaces the unicode char with normal '
     return text.replace(u"\u2019","'")
@@ -214,14 +213,14 @@ def makeSentence() -> str:
         random.choice(adjectives),
         "."
     ])
-    
+
     
 #Class to keep track of word and its word id
 class Vocabulary:
     def __init__(self, words: List[str] = None) -> None:
         #w2i = word to id
-        self.w2i : Dict[str,int] = {} # maps word to word id
-        self.i2w = Dict[int,str] = {} # maps id to word
+        self.w2i : Dict[str, int] = {} # maps word to word id
+        self.i2w : Dict[int, str] = {} # maps id to word
         #if words were provided, using or operator as a fallback mechanism if words are empty
         for word in (words or []): 
             self.add(word)
@@ -258,14 +257,8 @@ def loadVocab(fileName:str) ->Vocabulary:
         vocab.i2w = {id:word for word, id in vocab.w2i.items()}
     return vocab
 
-class Embedding:
-    
-    def __init__(self, numEmbeddings: int, embeddingDim: int) -> None:
-        """
-        Args:
-            numEmbeddings (int): The number of embeddings.
-            embeddingDim (int): The dimension of the embeddings.
-        """
+class Embedding(Layer):
+
     def __init__(self,numEmbeddings:int, embeddingDim:int) -> None:
         self.numEmbeddings = numEmbeddings
         self.embeddingDim=embeddingDim
@@ -294,6 +287,30 @@ class Embedding:
     def grads(self) -> Iterable[Tensor]:
         return [self.grad]
 
+class TextEmbedding(Embedding):
+    def __init__(self,vocab:Vocabulary,embeddingDim:int) -> None:
+        #the number of words to be embdedd depends on the vocabulary 
+        super().__init__(vocab.size,embeddingDim)
+        self.vocab=vocab
+    #allows support for using object to use the indexng syntax so self[index]
+    def __getitem__(self,word:str) -> Tensor:
+        wordID = self.vocab.getId(word)
+        if wordID is not None:
+            return self.embeddings[wordID]
+        else: return None
+     
+    def closest(self, word: str, n: int = 5) -> List[Tuple[float, str]]:
+        """Returns the n closest words based on cosine similarity"""
+        vector = self[word]
+        #list of tuples with each word and how similar it is to the given word
+        scores = [(cosineSimilarity(vector,self.embeddings[i]), otherWord) for otherWord, i in self.vocab.w2i.items()]
+        #sort by largest first
+        scores.sort(reverse=True)
+        #get largest until the nth score
+        return scores[:n]        
+        
+        
+        
 def main():
     url = "http://radar.oreilly.com/2010/06/what-is-data-science"
     page = requests.get(url).text
@@ -305,7 +322,7 @@ def main():
     regex = r"[\w]+|[\.]"
     document = []
 
-    for paragraph in content.find_all("p"):
+    '''for paragraph in content.find_all("p"):
         words = re.findall(pattern=regex, string=fixUniCode(paragraph.text))
         document.extend(words)
     #create a deafult dict where the normal value for any key is an empty list
@@ -356,12 +373,53 @@ def main():
         for word, count in word_counts.most_common():
             if count > 0:
                 pass
-                #print(k, word, count)
-    sentences = [makeSentence() for _ in range(NUM_SENTENCES)]
-    for sentence in sentences:
-        print(" ".join(sentence))
-
-
-NUM_SENTENCES = 50
+                #print(k, word, count)'''
+    NUM_SENTENCES = 50
+    sentences = [makeSentence() for _ in range(50)]
+    #2d list. Each list is a sentence that is itself a list of words
+    tokenizedSentences = [re.findall("[a-z]+|[.]", sentence.lower())
+                           for sentence in sentences]
+    vocab = Vocabulary(word
+                       for sentenceWords in tokenizedSentences
+                       for word in sentenceWords)
+    inputs: List[int] = []
+    targets: List[Tensor] = []
+    for sentence in tokenizedSentences:
+        for i, word in enumerate(sentence):          # For each word
+            for j in [i - 2, i - 1, i + 1, i + 2]:   # take the nearby locations
+                if 0 <= j < len(sentence):           # that aren't out of bounds
+                    nearbyWord = sentence[j]        # and get those words.
     
+                    # Add an input that's the original word_id
+                    inputs.append(vocab.getId(word))
+    
+                    # Add a target that's the one-hot-encoded nearby word
+                    targets.append(vocab.oneHotEncode(nearbyWord))
+                    
+    EMBEDDING_DIMS = 5
+    embedding = TextEmbedding(vocab=vocab, embeddingDim=EMBEDDING_DIMS)
+    #sequential network where the first layer embeds the words and passes it to linear
+    model = Sequential([
+        embedding,
+        Linear(input_dim=embedding.embeddingDim, output_dim=vocab.size)
+    ])
+    loss = SoftmaxCrossEntropy()
+    optimizer = GradientDescent()
+    
+    for epoch in range(100):
+        epoch_loss = 0.0
+        for input, target in zip(inputs, targets):
+            predicted = model.forward(input)
+            epoch_loss += loss.loss(predicted, target)
+            gradient = loss.gradient(predicted, target)
+            model.backward(gradient)
+            optimizer.step(model)
+    # Explore most similar words
+    
+    pairs = [(cosineSimilarity(embedding[w1], embedding[w2]), w1, w2)
+             for w1 in vocab.w2i
+             for w2 in vocab.w2i
+             if w1 < w2]
+    pairs.sort(reverse=True)
+    print(pairs[:5])
 if __name__ == "__main__" : main()
