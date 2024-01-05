@@ -1,6 +1,7 @@
 import json
 import math
 import re
+from token import STAR
 from turtle import forward
 from bs4 import BeautifulSoup
 from numpy import dot
@@ -8,7 +9,7 @@ import requests
 from collections import defaultdict
 from typing import Counter, Dict,List, Text, Tuple
 import random
-from DeepLearning import Layer,Tensor, randomTensor, zeroesTensor,Sequential,Linear,SoftmaxCrossEntropy,Momentum,GradientDescent, tensorApply, tanh
+from DeepLearning import Layer,Tensor, randomTensor, zeroesTensor,Sequential,Linear,SoftmaxCrossEntropy,Momentum,GradientDescent, tensorApply, tanh,softmax
 import tqdm
 from typing import Iterable
 from vectors import Vector,dot
@@ -309,7 +310,8 @@ class TextEmbedding(Embedding):
         scores.sort(reverse=True)
         #get largest until the nth score
         return scores[:n]        
-        
+
+
 class SimpleRNN(Layer):
     def __init__(self,inputDim: int, hiddenDim: int) -> None:
         self.inputDim = inputDim
@@ -324,13 +326,20 @@ class SimpleRNN(Layer):
     def resetHiddenState(self)->None:
         self.hidden = [0 for _ in range(self.hiddenDim)]
     
-    def forward(self, input:Tensor) -> Tensor:
-        self.input = input
-        self.prevHidden = self.hidden
-        a = [(dot(input,self.w[o]) + dot(self.u[o], self.hidden)+ self.b)  for o in range(self.hiddenDim)]
-        #apply tanh actiavtion function 
-        self.hidden = tensorApply(tanh, a)
-        return self.hidden
+    def forward(self, input: Tensor) -> Tensor:
+        self.input = input              # Save both input and previous
+        self.prevHidden = self.hidden  # hidden state to use in backprop.
+
+        a = [(dot(self.w[h], input) +           # weights @ input
+              dot(self.u[h], self.hidden) +     # weights @ hidden
+              self.b[h])                        # bias
+             for h in range(self.hiddenDim)]
+
+        self.hidden = tensorApply(tanh, a)  # Apply tanh activation
+        return self.hidden                   # and return the result.
+    
+    
+    
     def backward(self, gradient):
         #backprop gradient with respect to gradient of tanh
         aGrad = [gradient[o] * (1-self.hidden[o] ** 2) for o in range(self.hiddenDim)]
@@ -415,7 +424,7 @@ def main():
             if count > 0:
                 pass
                 #print(k, word, count)'''
-'''    NUM_SENTENCES = 50
+    '''    NUM_SENTENCES = 50
     sentences = [makeSentence() for _ in range(50)]
     #2d list. Each list is a sentence that is itself a list of words
     tokenizedSentences = [re.findall("[a-z]+|[.]", sentence.lower())
@@ -463,4 +472,78 @@ def main():
              if w1 < w2]
     pairs.sort(reverse=True)
     print(pairs[:5])'''
+    
+    url = "https://www.ycombinator.com/topcompanies/"
+    soup = BeautifulSoup(requests.get(url).text, 'html5lib')
+    pattern = r"\.(com|co)$"
+    companies = list({a.text
+                      for a in soup("a")
+                      })
+    print(len(companies))
+    #companies = [re.sub(pattern, '', company) for company in companies]
+    vocab = Vocabulary([c for company in companies for c in company])
+    START = "^"
+    STOP = "$"
+    vocab.add(START)
+    vocab.add(STOP)
+    HIDDEN_DIM = 50
+    rnn1 =  SimpleRNN(inputDim=vocab.size, hiddenDim=HIDDEN_DIM)
+    rnn2 =  SimpleRNN(inputDim=HIDDEN_DIM, hiddenDim=HIDDEN_DIM)
+    linear = Linear(input_dim=HIDDEN_DIM, output_dim=vocab.size)
+    
+    model = Sequential([
+        rnn1,
+        rnn2,
+        linear
+    ])
+    def generate(seed: str = START, max_len: int = 50) -> str:
+        rnn1.resetHiddenState()  # Reset both hidden states.
+        rnn2.resetHiddenState()
+        output = [seed]            # Start the output with the specified seed.
+    
+        # Keep going until we produce the STOP character or reach the max length
+        while output[-1] != STOP and len(output) < max_len:
+            # Use the last character as the input
+            input = vocab.oneHotEncode(output[-1])
+    
+            # Generate scores using the model
+            predicted = model.forward(input)
+    
+            # Convert them to probabilities and draw a random char_id
+            probabilities = softmax(predicted)
+            next_char_id = sampleFrom(probabilities)
+    
+            # Add the corresponding char to our output
+            output.append(vocab.getWord(next_char_id))
+    
+        # Get rid of START and END characters and return the word.
+        return ''.join(output[1:-1])
+    loss = SoftmaxCrossEntropy()
+    optimizer = Momentum(learning_rate=0.01, momentum=0.9)
+    for epoch in range(300):
+        random.shuffle(companies)  # Train in a different order each epoch.
+        epoch_loss = 0             # Track the loss.
+        for company in tqdm.tqdm(companies):
+            rnn1.resetHiddenState()  # Reset both hidden states.
+            rnn2.resetHiddenState()
+            company =  company    # Add START and STOP characters.
+    
+            # The rest is just our usual training loop, except that the inputs
+            # and target are the one-hot-encoded previous and next characters.
+            for prev, next in zip(company, company[1:]):
+                input = vocab.oneHotEncode(prev)
+                target = vocab.oneHotEncode(next)
+                predicted = model.forward(input)
+                epoch_loss += loss.loss(predicted, target)
+                gradient = loss.gradient(predicted, target)
+                model.backward(gradient)
+                optimizer.step(model)
+    
+        # Each epoch print the loss and also generate a name
+        print(epoch, epoch_loss, generate())
+    
+        # Turn down the learning rate for the last 100 epochs.
+        # There's no principled reason for this, but it seems to work.
+        if epoch == 200:
+            optimizer.lr *= 0.1
 if __name__ == "__main__" : main()
