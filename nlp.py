@@ -1,13 +1,17 @@
+import json
+import math
 import re
-from tracemalloc import start
 from bs4 import BeautifulSoup
-from cv2 import exp 
+from numpy import dot
 import requests
 from collections import defaultdict
 from typing import Counter, Dict,List, Tuple
 import random
-
+from DeepLearning import Tensor, randomTensor, zeroesTensor
 import tqdm
+from typing import Iterable
+from DeepLearning import Layer, Tensor, random_tensor, zeros_like
+from vectors import Vector
 
 def fixUniCode(text : str) -> str:
     #u prefix denotes unicode string. This function replaces the unicode char with normal '
@@ -191,7 +195,105 @@ def sampleFrom(weights: List[float]) -> int:
     for i, w in enumerate(weights):
         rnd -= w                       # return the smallest i such that
         if rnd <= 0: return i          # weights[0] + ... + weights[i] >= rnd
-            
+def cosineSimilarity(v1: Vector, v2: Vector) -> float:
+    return dot(v1,v2)/math.sqrt(dot(v1,v1)*dot(v2,v2))
+
+colors = ["red", "green", "blue", "yellow", "black", ""]
+nouns = ["bed", "car", "boat", "cat"]
+verbs = ["is", "was", "seems"]
+adverbs = ["very", "quite", "extremely", ""]
+adjectives = ["slow", "fast", "soft", "hard"]
+
+def makeSentence() -> str:
+    return " ".join([
+        "The",
+        random.choice(colors),
+        random.choice(nouns),
+        random.choice(verbs),
+        random.choice(adverbs),
+        random.choice(adjectives),
+        "."
+    ])
+    
+    
+#Class to keep track of word and its word id
+class Vocabulary:
+    def __init__(self, words: List[str] = None) -> None:
+        #w2i = word to id
+        self.w2i : Dict[str,int] = {} # maps word to word id
+        self.i2w = Dict[int,str] = {} # maps id to word
+        #if words were provided, using or operator as a fallback mechanism if words are empty
+        for word in (words or []): 
+            self.add(word)
+    #Property is used to mark functions that should be treated as attributes
+    @property
+    def size(self) -> int:
+        #how many words in the vocab
+        return len(self.i2w)
+    
+    def add(self, word: str) -> None:
+        if word not in self.w2i:
+            wordID = len(self.w2i)
+            #add to both dicts
+            self.w2i[word] = wordID
+            self.i2w[wordID] = word
+    def getWord (self, i: int) -> str:
+        #get word from id
+        return self.i2w[i]
+    def getId(self, word: str) -> int:
+        #get id from word
+        return self.w2i[word]
+    def oneHotEncode (self, word:str) -> Tensor:
+        wordId = self.getId(word)
+        assert wordId is not None,f"unknown word: {word}"
+        return [1.0 if i == wordId else 0.0 for i in range(self.size)] 
+    
+def saveVocab(vocab: Vocabulary) -> None:
+    with open("vocabFile","w") as f:
+        json.dump(vocab.w2i,f)
+def loadVocab(fileName:str) ->Vocabulary:
+    vocab = Vocabulary()
+    with open(fileName, "r") as f:
+        vocab.w2i = json.load(f)
+        vocab.i2w = {id:word for word, id in vocab.w2i.items()}
+    return vocab
+
+class Embedding:
+    
+    def __init__(self, numEmbeddings: int, embeddingDim: int) -> None:
+        """
+        Args:
+            numEmbeddings (int): The number of embeddings.
+            embeddingDim (int): The dimension of the embeddings.
+        """
+    def __init__(self,numEmbeddings:int, embeddingDim:int) -> None:
+        self.numEmbeddings = numEmbeddings
+        self.embeddingDim=embeddingDim
+        #create vector of size embedding dim for however many embeddings we need
+        self.embeddings = randomTensor(numEmbeddings,embeddingDim)
+        self.grad=(zeroesTensor(self.embeddings))
+        #save last input id
+        self.lastInputID = None
+        
+    def forward(self, inputID: int):
+        self.inputID = inputID #save for backpropagation
+        return self.embeddings[inputID]
+    
+    
+    #the gradient is zero for every embedding except for the chosen one
+    def backward(self, gradient: Tensor) -> None:
+        # Zero out the gradient corresponding to the last input.
+        if self.lastInputID is not None:
+            zeroList = [0 for _ in range(self.embeddingDim)]
+            self.grad[self.lastInputID] = zeroList
+
+        self.lastInputID = self.inputID
+        self.grad[self.inputID] = gradient
+    def params(self) -> Iterable[Tensor]:
+        return [self.embeddings]
+    def grads(self) -> Iterable[Tensor]:
+        return [self.grad]
+
 def main():
     url = "http://radar.oreilly.com/2010/06/what-is-data-science"
     page = requests.get(url).text
@@ -253,5 +355,13 @@ def main():
     for k, word_counts in enumerate(topicWordCounts):
         for word, count in word_counts.most_common():
             if count > 0:
-                print(k, word, count)
+                pass
+                #print(k, word, count)
+    sentences = [makeSentence() for _ in range(NUM_SENTENCES)]
+    for sentence in sentences:
+        print(" ".join(sentence))
+
+
+NUM_SENTENCES = 50
+    
 if __name__ == "__main__" : main()
