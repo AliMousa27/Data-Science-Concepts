@@ -1,16 +1,17 @@
 import json
 import math
 import re
+from turtle import forward
 from bs4 import BeautifulSoup
 from numpy import dot
 import requests
 from collections import defaultdict
 from typing import Counter, Dict,List, Text, Tuple
 import random
-from DeepLearning import Layer,Tensor, randomTensor, zeroesTensor,Sequential,Linear,SoftmaxCrossEntropy,Momentum,GradientDescent
+from DeepLearning import Layer,Tensor, randomTensor, zeroesTensor,Sequential,Linear,SoftmaxCrossEntropy,Momentum,GradientDescent, tensorApply, tanh
 import tqdm
 from typing import Iterable
-from vectors import Vector
+from vectors import Vector,dot
 import re
 def fixUniCode(text : str) -> str:
     #u prefix denotes unicode string. This function replaces the unicode char with normal '
@@ -309,7 +310,47 @@ class TextEmbedding(Embedding):
         #get largest until the nth score
         return scores[:n]        
         
+class SimpleRNN(Layer):
+    def __init__(self,inputDim: int, hiddenDim: int) -> None:
+        self.inputDim = inputDim
+        self.hiddenDim = hiddenDim
         
+        self.w= randomTensor(hiddenDim,inputDim,init="xavier")
+        self.u= randomTensor(hiddenDim,hiddenDim,init="xavier")
+        self.b = randomTensor(hiddenDim,init="xavier")
+        
+        self.resetHiddenState()
+        
+    def resetHiddenState(self)->None:
+        self.hidden = [0 for _ in range(self.hiddenDim)]
+    
+    def forward(self, input:Tensor) -> Tensor:
+        self.input = input
+        self.prevHidden = self.hidden
+        a = [(dot(input,self.w[o]) + dot(self.u[o], self.hidden)+ self.b)  for o in range(self.hiddenDim)]
+        #apply tanh actiavtion function 
+        self.hidden = tensorApply(tanh, a)
+        return self.hidden
+    def backward(self, gradient):
+        #backprop gradient with respect to gradient of tanh
+        aGrad = [gradient[o] * (1-self.hidden[o] ** 2) for o in range(self.hiddenDim)]
+        #chain rule we remove constant so gradient for b is just the a gradient 
+        self.bGrad = aGrad
+        
+        self.wGrad = [[aGrad[o] * self.input[i] for i in range(self.inputDim)] for o in range(self.hiddenDim)]
+        self.u_grad = [[aGrad[h] * self.prevHidden[h2]
+                        for h2 in range(self.hiddenDim)]
+                       for h in range(self.hiddenDim)]
+
+        # Each input[i] is multiplied by every w[h][i] and added to a[h],
+        # so each input_grad[i] = sum(a_grad[h] * w[h][i] for h in ...)
+        return [sum(aGrad[h] * self.w[h][i] for h in range(self.hiddenDim))
+                for i in range(self.inputDim)]    
+    def params(self) -> Iterable[Tensor]:
+        return [self.w,self.u,self.b]
+    def grads(self) -> Iterable[Tensor]:
+        return [self.wGrad,self.u_grad,self.bGrad]
+                
         
 def main():
     url = "http://radar.oreilly.com/2010/06/what-is-data-science"
@@ -374,7 +415,7 @@ def main():
             if count > 0:
                 pass
                 #print(k, word, count)'''
-    NUM_SENTENCES = 50
+'''    NUM_SENTENCES = 50
     sentences = [makeSentence() for _ in range(50)]
     #2d list. Each list is a sentence that is itself a list of words
     tokenizedSentences = [re.findall("[a-z]+|[.]", sentence.lower())
@@ -421,5 +462,5 @@ def main():
              for w2 in vocab.w2i
              if w1 < w2]
     pairs.sort(reverse=True)
-    print(pairs[:5])
+    print(pairs[:5])'''
 if __name__ == "__main__" : main()
