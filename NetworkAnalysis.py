@@ -1,6 +1,9 @@
-from typing import NamedTuple,Dict, List
-
+from typing import NamedTuple,Dict, List,Tuple
+from vectors import Matrix, make_matrix,shape, Vector,dot,magnitude,distance
 from collections  import deque
+import random
+from pprint import pprint
+
 Path = List[int]
 Friendships = Dict[int, List[int]]
 class User(NamedTuple):
@@ -45,6 +48,31 @@ def farness(userId: int, shortestPaths):
     """the sum of the lengths of the shortest paths to each other user"""
     return sum(len(paths[0])
                for paths in shortestPaths[userId].values())
+    
+def makeTimesMatrix(m1:Matrix, m2: Matrix) -> Matrix:
+    #number of rows and columns
+    nr1,nc1 = shape(m1)
+    nr2,nc2 = shape(m2)
+    assert nc1 == nr2
+    def entryFN(i,j) -> float:
+        return sum(m1[i][k] * m2[j][k] for k in range(nc1))
+    return make_matrix(nr1,nc2,entryFN)
+
+def matrixTimesVector(m: Matrix, v: Vector):
+    nr,nc = shape(m)
+    assert nc == len(v)
+    return [dot(v,row) for row in m]
+
+def findEigenVector(A:Matrix,tolerance: float = 0.00001) -> Tuple[Vector,float]:
+    guess = [random.random() for _ in A]
+    while True:
+        result = matrixTimesVector(A,guess)
+        length = magnitude(result)
+        #scale magnitude to be 1
+        nextGuess = [x/length for x in result]
+        if distance(nextGuess,guess) <tolerance:
+            return nextGuess,length
+        guess=nextGuess
 def main():
     #type
     friendships : Friendships = {user.id: [] for user in users}
@@ -63,7 +91,15 @@ def main():
                         if between_id not in [source.id, targetId]:
                             betweenCentrality[between_id] += contrib
     #print(betweenCentrality)
-    closeness_centrality = {user.id: 1 / farness(user.id,shortestPaths) for user in users}
-    #sprint(closeness_centrality)
+    closenessCentrality = {user.id: 1 / farness(user.id,shortestPaths) for user in users}
+    #sprint(closenessCentrality)
+    def entry_fn(i: int, j: int):
+        return 1 if (i, j) in friendPairs or (j, i) in friendPairs else 0
+
+    n = len(users)
+    adjacency_matrix = make_matrix(n, n, entry_fn)
+    #pprint(adjacency_matrix)
+    eigenVector = findEigenVector(adjacency_matrix)
+    pprint(eigenVector)
 
 if __name__ == "__main__": main() 
