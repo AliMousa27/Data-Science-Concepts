@@ -526,7 +526,7 @@ def main():
         for company in tqdm.tqdm(companies):
             rnn1.resetHiddenState()  # Reset both hidden states.
             rnn2.resetHiddenState()
-            company =  company    # Add START and STOP characters.
+            company =  START + company + STOP    # Add START and STOP characters.
     
             # The rest is just our usual training loop, except that the inputs
             # and target are the one-hot-encoded previous and next characters.
