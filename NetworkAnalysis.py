@@ -1,8 +1,8 @@
 from typing import NamedTuple,Dict, List,Tuple
 from vectors import Matrix, make_matrix,shape, Vector,dot,magnitude,distance
-from collections  import deque
+from collections  import deque,Counter
+import tqdm
 import random
-from pprint import pprint
 
 Path = List[int]
 Friendships = Dict[int, List[int]]
@@ -15,7 +15,9 @@ users = [User(0, "Hero"), User(1, "Dunn"), User(2, "Sue"), User(3, "Chi"),
 
 friendPairs = [(0, 1), (0, 2), (1, 2), (1, 3), (2, 3), (3, 4),
                 (4, 5), (5, 6), (5, 7), (6, 8), (7, 8), (8, 9)]
-
+endorsements = [(0, 1), (1, 0), (0, 2), (2, 0), (1, 2),
+                (2, 1), (1, 3), (2, 3), (3, 4), (5, 4),
+                (5, 6), (7, 5), (6, 8), (8, 7), (8, 9)]
 #scuffed breadth first search
 def shortestPathsFrom(fromUserId: int,
                         friendships: Friendships) -> Dict[int, List[Path]]:
@@ -73,6 +75,26 @@ def findEigenVector(A:Matrix,tolerance: float = 0.00001) -> Tuple[Vector,float]:
         if distance(nextGuess,guess) <tolerance:
             return nextGuess,length
         guess=nextGuess
+        
+def pageRank(users: List[User],endorsements: List[Tuple[int,int]],
+             damping: float = 0.85,numIters: int = 100) -> Vector:
+    
+    outgoingCounts = Counter(target for source, target in endorsements)
+
+    # Initially distribute PageRank evenly
+    numUsers = len(users)
+    pr = {user.id : 1 / numUsers for user in users}
+    # Small fraction of PageRank that each node gets each iteration
+    basePr = (1 - damping) / numUsers
+    for iter in tqdm.trange(numIters):
+        nextPr = {user.id : basePr for user in users}
+        for source, target in endorsements:
+            # Add damped fraction of source pr to target
+            nextPr[target] += damping * pr[source] / outgoingCounts[source]
+        pr = nextPr
+    return pr
+
+
 def main():
     #type
     friendships : Friendships = {user.id: [] for user in users}
@@ -92,14 +114,13 @@ def main():
                             betweenCentrality[between_id] += contrib
     #print(betweenCentrality)
     closenessCentrality = {user.id: 1 / farness(user.id,shortestPaths) for user in users}
-    #sprint(closenessCentrality)
+    #print(closenessCentrality)
     def entry_fn(i: int, j: int):
         return 1 if (i, j) in friendPairs or (j, i) in friendPairs else 0
 
     n = len(users)
     adjacency_matrix = make_matrix(n, n, entry_fn)
-    #pprint(adjacency_matrix)
+    #print(adjacency_matrix)
     eigenVector = findEigenVector(adjacency_matrix)
-    pprint(eigenVector)
 
 if __name__ == "__main__": main() 
