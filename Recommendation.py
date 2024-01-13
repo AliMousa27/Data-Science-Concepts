@@ -59,6 +59,40 @@ def userBasedSugestion(userId: int,similarityVector: List[List[str]], includeCur
     else:
         return [(suggestion,weight) for suggestion,weight in suggestions
                 if suggestion not in usersInterests[userId]]
+        
+        
+def mostSimilarInterest(interestId: int,interestSimilarities:List,uniqueInterests: List):
+    similarities = interestSimilarities[interestId]
+    similarities = interestSimilarities[interestId]
+    pairs = [(uniqueInterests[other_interest_id], similarity)
+             for other_interest_id, similarity in enumerate(similarities)
+             if interestSimilarities != other_interest_id and similarity > 0]
+    return sorted(pairs,
+                  key=lambda pair: pair[-1],
+                  reverse=True)
+    
+def itemBasedSuggestions(userId: int,userInterestsVector,interestSimilarities,uniqueInterests,
+                           include_current_interests: bool = False):
+    # Add up the similar interests
+    suggestions = defaultdict(float)
+    userInterest_vector = userInterestsVector[userId]
+    for interestId, is_interested in enumerate(userInterestsVector):
+        if is_interested == 1:
+            similar_interests = mostSimilarInterest(interestId,interestSimilarities,uniqueInterests)
+            for interest, similarity in similar_interests:
+                suggestions[interest] += similarity
+
+    # Sort them by weight
+    suggestions = sorted(suggestions.items(),
+                         key=lambda pair: pair[-1],
+                         reverse=True)
+
+    if include_current_interests:
+        return suggestions
+    else:
+        return [(suggestion, weight)
+                for suggestion, weight in suggestions
+                if suggestion not in usersInterests[userId]]
 def main():
     counter = Counter(word
                       for user in usersInterests
@@ -67,10 +101,17 @@ def main():
     uniqueInterests = sorted({topic for user in usersInterests for topic in user})
     interestVectors = [createUserInterestVector(user,uniqueInterests) for user in usersInterests]
     #userSimilarites[i][j] gives similarity score between user i and j
-    userSimilarities = [[cosineSimilarity(userVecI,userVecJ) 
+    userSimilarities = [[cosineSimilarity(userVecI,userVecJ)
                         for userVecI in interestVectors]
                         for userVecJ in interestVectors
                         ]
     #print(mostSimilarUsersTo(0,userSimilarities))
-    print(userBasedSugestion(0,userSimilarities))
+    #print(userBasedSugestion(0,userSimilarities))
+    
+    #rows are interests columns are users
+    interestMatrix = [[userInterestVector[j] for userInterestVector in interestVectors]
+                          for j,_ in enumerate(uniqueInterests)]
+    interestSimilarities = [[cosineSimilarity(v1,v2) for v1 in interestMatrix]
+                            for v2 in interestMatrix]
+    #print(mostSimilarInterest(1,interestSimilarities,uniqueInterests))
 if __name__ == "__main__": main()
