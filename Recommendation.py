@@ -1,8 +1,13 @@
 from collections import Counter,defaultdict
+from math import e
 from nlp import cosineSimilarity
 from typing import List,Tuple,Dict, NamedTuple
 import csv
 import re
+import random
+from DeepLearning import randomTensor
+import tqdm
+from vectors import dot
 usersInterests = [
     ["Hadoop", "Big Data", "HBase", "Java", "Spark", "Storm", "Cassandra"],
     ["NoSQL", "MongoDB", "Cassandra", "HBase", "Postgres"],
@@ -101,6 +106,23 @@ class RATING(NamedTuple):
     rating: float
 
 
+def loop(dataset: List[RATING],userVector, movieVector,learningRate : float =None,EMBEDDING_DIM:float  =2) -> None:
+    with tqdm.tqdm(dataset) as t:
+        loss = 0.0
+        for i,rating in enumerate(t):
+
+            predicted = dot(userVector,movieVector)
+            print(f"predicted: {predicted} actual: {rating.rating}")
+            error = predicted - int(rating.rating)
+            loss += error**2
+            if learningRate is not None:
+                userGradient = [error * m for m in movieVector]
+                movieGradient = [error * u for u in userVector]
+                for j in range(EMBEDDING_DIM):
+                    userVector[j] -= learningRate * userGradient[j]
+                    movieVector[j] -= learningRate * movieGradient[j]
+            t.set_description(f"avg loss: {loss/(i+1)}")
+
 def main():
     counter = Counter(word
                       for user in usersInterests
@@ -133,8 +155,8 @@ def main():
         assert len(movies) == 1682
     with open(file=RATINGS, encoding="iso-8859-1") as f:
         reader = csv.reader(f,delimiter="\t")
-        ratings = {RATING(userID,movieID,rating)
-                 for userID,movieID,rating,_ in reader}
+        ratings = [RATING(userID,movieID,rating)
+                 for userID,movieID,rating,_ in reader]
         assert len(list(rating.userID for rating in ratings)) == 100000
         
     #dict where movie id is the key and the value is a list of its ratings
@@ -143,9 +165,34 @@ def main():
     for rating in ratings:
         if rating.movieID in ratingsForBatman:
             ratingsForBatman[rating.movieID].append(rating.rating)
-    print(ratingsForBatman)
     averageRating = {movies[movieID]: (sum(int(rating) for rating in ratings)/len(ratings)) for movieID, ratings in ratingsForBatman.items()}
     print(averageRating)
             
-            
+    random.seed(0)
+    random.shuffle(ratings)
+    split1 = int (len(ratings)*0.7)
+    split2 = int (len(ratings)*0.85)
+    
+    train = ratings[:split1]#70% to train
+    validate = ratings[split1:split2]#15% to validate
+    test = ratings[split2:]#15% to test
+    baselineError = 1.265
+    
+    EMBEDDING_DIM =2
+    user_ids = {rating.userID for rating in ratings}
+    movie_ids = {rating.movieID for rating in ratings}
+    
+    userVectors = {user_id: randomTensor(EMBEDDING_DIM)
+                    for user_id in user_ids}
+    movieVectors = {movie_id: randomTensor(EMBEDDING_DIM)
+                     for movie_id in movie_ids}
+    lr = 0.05
+    for epoch in range(20):
+        loop(train,userVectors,movieVectors,learningRate=lr)
+        lr*=0.9
+        print(epoch,lr,end = " ")
+        loop(train,userVectors,movieVectors)
+        loop(validate,userVectors,movieVectors)
+    loop(test,userVectors,movieVectors)
+
 if __name__ == "__main__": main()
