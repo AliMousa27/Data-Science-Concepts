@@ -1,8 +1,7 @@
 from collections import Counter,defaultdict
-import enum
 from nlp import cosineSimilarity
-from typing import List,Tuple,Dict
-
+from typing import List,Tuple,Dict, NamedTuple
+import csv
 usersInterests = [
     ["Hadoop", "Big Data", "HBase", "Java", "Spark", "Storm", "Cassandra"],
     ["NoSQL", "MongoDB", "Cassandra", "HBase", "Postgres"],
@@ -93,6 +92,14 @@ def itemBasedSuggestions(userId: int,userInterestsVector,interestSimilarities,un
         return [(suggestion, weight)
                 for suggestion, weight in suggestions
                 if suggestion not in usersInterests[userId]]
+
+
+class RATING(NamedTuple):
+    userID : str
+    movieID: str
+    rating: float
+
+
 def main():
     counter = Counter(word
                       for user in usersInterests
@@ -113,5 +120,19 @@ def main():
                           for j,_ in enumerate(uniqueInterests)]
     interestSimilarities = [[cosineSimilarity(v1,v2) for v1 in interestMatrix]
                             for v2 in interestMatrix]
-    #print(mostSimilarInterest(1,interestSimilarities,uniqueInterests))
+    #doiwnoad file from https://files.group-lens.org/datasets/movielens/ml-100k.zip and put in appropriate directory
+    MOVIES = "../ml-100k/u.item"
+    RATINGS = "../ml-100k/u.data"
+    
+    with open(MOVIES, encoding="iso-8859-1") as f:
+        reader = csv.reader(f,delimiter="|")
+        #The * is for ignoring the other useless args split by the delimiter that we dont need
+        
+        movies = {movieID: title for movieID, title, *_ in reader}
+        assert len(movies) == 1682
+    with open(file=RATINGS, encoding="iso-8859-1") as f:
+        reader = csv.reader(f,delimiter="\t")
+        users = {RATING(userID,movieID,rating)
+                 for userID,movieID,rating,_ in reader}
+        assert len(list(rating.userID for rating in users)) == 100000
 if __name__ == "__main__": main()
