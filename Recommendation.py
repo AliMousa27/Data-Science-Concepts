@@ -2,6 +2,7 @@ from collections import Counter,defaultdict
 from nlp import cosineSimilarity
 from typing import List,Tuple,Dict, NamedTuple
 import csv
+import re
 usersInterests = [
     ["Hadoop", "Big Data", "HBase", "Java", "Spark", "Storm", "Cassandra"],
     ["NoSQL", "MongoDB", "Cassandra", "HBase", "Postgres"],
@@ -132,7 +133,19 @@ def main():
         assert len(movies) == 1682
     with open(file=RATINGS, encoding="iso-8859-1") as f:
         reader = csv.reader(f,delimiter="\t")
-        users = {RATING(userID,movieID,rating)
+        ratings = {RATING(userID,movieID,rating)
                  for userID,movieID,rating,_ in reader}
-        assert len(list(rating.userID for rating in users)) == 100000
+        assert len(list(rating.userID for rating in ratings)) == 100000
+        
+    #dict where movie id is the key and the value is a list of its ratings
+    ratingsForBatman = {movieID: [] for movieID, title in movies.items() if re.search("Batman",title)}
+    
+    for rating in ratings:
+        if rating.movieID in ratingsForBatman:
+            ratingsForBatman[rating.movieID].append(rating.rating)
+    print(ratingsForBatman)
+    averageRating = {movies[movieID]: (sum(int(rating) for rating in ratings)/len(ratings)) for movieID, ratings in ratingsForBatman.items()}
+    print(averageRating)
+            
+            
 if __name__ == "__main__": main()
